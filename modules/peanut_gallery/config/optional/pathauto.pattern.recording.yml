@@ -1,0 +1,23 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.recording
+  module:
+    - node
+    - pathauto
+id: recording
+label: 'Recording paths'
+type: 'canonical_entities:node'
+pattern: '/recordings/[node:title]'
+selection_criteria:
+  pathauto_bundle_1:
+    id: 'entity_bundle:node'
+    negate: false
+    context_mapping:
+      node: node
+    bundles:
+      recording: recording
+selection_logic: and
+weight: 0
+relationships: {  }
