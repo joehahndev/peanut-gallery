@@ -9,6 +9,10 @@
  * - pg_waveform.audio_url: URL to the recording's audio (routes through
  *   hook_file_download() for private recordings).
  * - pg_waveform.anonymous_comments_allowed: bool, informational only.
+ * - pg_waveform.file_name / file_size / file_extension / uploaded: file
+ *   metadata (full view mode only).
+ * - pg_waveform.duration_formatted: m:ss, only present once this
+ *   recording's waveform peaks have been generated at least once.
  *
  * The container below is intentionally empty markup — wavesurfer.js
  * renders its waveform into it at runtime. Without JavaScript it stays
@@ -50,6 +54,20 @@
     <noscript>
       <p class="pg-waveform-noscript">{{ 'Enable JavaScript to see and use the waveform player. You can still read and post comments below.'|t }}</p>
     </noscript>
+
+    <div class="pg-waveform-meta">
+      <span class="pg-waveform-time" data-player-id="{{ pg_waveform.player_id }}">
+        {%- if pg_waveform.duration_formatted -%}0:00 / {{ pg_waveform.duration_formatted }}{%- endif -%}
+      </span>
+      {% if pg_waveform.file_name %}
+        <span class="pg-waveform-file-info">
+          <span>{{ pg_waveform.file_name }}</span>
+          <span>{{ pg_waveform.file_size }}</span>
+          {% if pg_waveform.file_extension %}<span>{{ pg_waveform.file_extension }}</span>{% endif %}
+          <span>{{ 'Uploaded @date'|t({'@date': pg_waveform.uploaded}) }}</span>
+        </span>
+      {% endif %}
+    </div>
   {% endif %}
 
   <div{{ content_attributes.addClass('node__content') }}>

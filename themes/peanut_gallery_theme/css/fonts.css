@@ -1,0 +1,13 @@
+/**
+ * JetBrains Mono, vendored (variable font, latin subset, ~40KB) — no
+ * external font CDN, consistent with the rest of this theme/module being
+ * buildless and dependency-free. See fonts/LICENSE.txt (SIL OFL 1.1).
+ */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/JetBrainsMono-Variable.woff2') format('woff2-variations');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}

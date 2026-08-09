@@ -10,12 +10,17 @@
  * once peanut_gallery's JS attaches (see waveform-player.js, which reads
  * data-comment-id/data-timestamp off this article element), so a no-JS
  * visitor never sees a dead/misleading control.
+ *
+ * Uses `author`/`created` (set individually by core's comment preprocess,
+ * alongside the combined `submitted` string) rather than `submitted`
+ * itself, for header layout control.
  */
 #}
 {%
   set classes = [
     'comment',
     'js-comment',
+    'pg-comment',
     status != 'published' ? status,
     comment.owner.anonymous ? 'by-anonymous',
     author_id and author_id == commented_entity.getOwnerId() ? 'by-' ~ commented_entity.getEntityTypeId() ~ '-author',
@@ -24,18 +29,18 @@
 <article{{ attributes.addClass(classes) }}
   {%- if pg_timestamp is not null %} data-comment-id="{{ comment.id }}" data-timestamp="{{ pg_timestamp }}"{% endif -%}
 >
-  {% if submitted %}
-    <footer class="comment__meta">
-      {{ user_picture }}
-      <p class="comment__submitted">{{ submitted }}</p>
-      {{ permalink }}
-    </footer>
-  {% endif %}
-
-  <div{{ content_attributes.addClass('content') }}>
+  <header class="pg-comment__header">
     {% if pg_timestamp_formatted %}
       <span class="pg-comment-timestamp">{{ pg_timestamp_formatted }}</span>
     {% endif %}
+    <span class="pg-comment__author">{{ author }}</span>
+    <span class="pg-comment__date">{{ created }}</span>
+    {% if permalink %}
+      <span class="pg-comment__permalink">{{ permalink }}</span>
+    {% endif %}
+  </header>
+
+  <div{{ content_attributes.addClass('pg-comment__body') }}>
     {{ content }}
   </div>
 </article>

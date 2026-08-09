@@ -41,6 +41,11 @@
   ]
 %}
 <section{{ attributes.addClass(classes) }}>
+  {% if comment_form %}
+    <h2 class="title comment-form__title">{{ 'Add new comment'|t }}</h2>
+    {{ comment_form }}
+  {% endif %}
+
   {% if comments and not label_hidden %}
     {{ title_prefix }}
     <h2{{ title_attributes.addClass(title_classes) }}>{{ label }}</h2>
@@ -48,10 +53,4 @@
   {% endif %}
 
   {{ comments }}
-
-  {% if comment_form %}
-    <h2 class="title comment-form__title">{{ 'Add new comment'|t }}</h2>
-    {{ comment_form }}
-  {% endif %}
-
 </section>

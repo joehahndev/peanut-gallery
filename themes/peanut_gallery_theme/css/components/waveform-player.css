@@ -1,26 +1,60 @@
 /**
- * Decorative styling for the waveform player container. The
- * peanut_gallery module owns box-model basics (min-height, cursor); this
- * theme owns everything visual, plus the color-token contract the
- * module's JS reads via getComputedStyle().
+ * Decorative styling for the waveform player and its surrounding
+ * transport/metadata row. The peanut_gallery module owns box-model basics
+ * (min-height, cursor); this theme owns everything visual, plus the
+ * color-token contract the module's JS reads via getComputedStyle().
  */
 
 .pg-waveform {
-  background: var(--pg-color-surface);
-  border: 1px solid var(--pg-color-border);
+  background: var(--pg-color-surface-raised);
+  border: var(--pg-border-width) solid var(--pg-color-border);
   border-radius: var(--pg-radius);
-  padding: var(--pg-space-2);
-  margin-block: var(--pg-space-3);
+  padding: var(--pg-space-3);
+  margin-top: var(--pg-space-3);
 }
 
 .pg-waveform:empty::after {
+  display: block;
   color: var(--pg-color-text-muted);
-  font-size: 0.875rem;
-  padding: var(--pg-space-3);
+  font-size: 0.8125rem;
+  padding: var(--pg-space-4) 0;
+  text-align: center;
 }
 
 .pg-waveform-noscript {
   color: var(--pg-color-text-muted);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-style: italic;
+}
+
+.pg-waveform-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--pg-space-2);
+  margin-top: var(--pg-space-2);
+  margin-bottom: var(--pg-space-4);
+  padding-inline: var(--pg-space-1);
+  font-size: 0.8125rem;
+  color: var(--pg-color-text-muted);
+}
+
+.pg-waveform-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--pg-color-text);
+}
+
+.pg-waveform-time:empty {
+  display: none;
+}
+
+.pg-waveform-file-info {
+  overflow-wrap: anywhere;
+}
+
+.pg-waveform-file-info span:not(:last-child)::after {
+  content: '\00b7';
+  margin-inline: 0.4em;
+  opacity: 0.6;
 }

@@ -2,6 +2,8 @@ base:
   version: VERSION
   css:
     component:
+      css/fonts.css:
+        weight: -31
       css/tokens.css:
         weight: -30
       css/reset.css:

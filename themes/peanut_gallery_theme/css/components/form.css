@@ -102,3 +102,76 @@ abbr.ajax-changed {
   background: url(../../images/icons/error.svg) no-repeat;
   background-size: contain;
 }
+
+/**
+ * Minimalist input/textarea/button treatment, built from tokens.css.
+ */
+.form-item label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='url'],
+input[type='number'],
+input[type='password'],
+textarea,
+select {
+  background: var(--pg-color-surface-raised);
+  color: var(--pg-color-text);
+  border: var(--pg-border-width) solid var(--pg-color-border);
+  border-radius: var(--pg-radius);
+  padding: 0.5em 0.65em;
+  font-family: inherit;
+  font-size: inherit;
+  width: 100%;
+  max-width: 32rem;
+}
+
+textarea {
+  min-height: 5rem;
+}
+
+input[type='text']:focus,
+input[type='email']:focus,
+input[type='url']:focus,
+input[type='number']:focus,
+input[type='password']:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--pg-color-focus);
+}
+
+input[type='submit'],
+button {
+  background: var(--pg-color-text);
+  color: var(--pg-color-bg);
+  border: var(--pg-border-width) solid var(--pg-color-text);
+  border-radius: var(--pg-radius);
+  padding: 0.5em 1.1em;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+input[type='submit']:hover,
+button:hover {
+  background: var(--pg-color-accent);
+  border-color: var(--pg-color-accent);
+}
+
+.form-actions .button:not(:first-child),
+.form-actions input[type='submit']:not(:first-child) {
+  background: transparent;
+  color: var(--pg-color-text-muted);
+  border-color: var(--pg-color-border);
+}
+
+.form-actions .button:not(:first-child):hover,
+.form-actions input[type='submit']:not(:first-child):hover {
+  color: var(--pg-color-accent);
+  border-color: var(--pg-color-accent);
+  background: transparent;
+}

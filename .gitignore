@@ -11,6 +11,7 @@ composer.phar
 
 # PHPStan cache
 /.phpstan-cache/
+/.phpcs-cache
 
 # Editor/OS cruft
 .DS_Store

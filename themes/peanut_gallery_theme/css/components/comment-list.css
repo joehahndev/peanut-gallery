@@ -2,27 +2,82 @@
  * Styling for the timestamped comment list rendered below the waveform.
  */
 
-.comment--recording-comment {
-  border-bottom: 1px solid var(--pg-color-border);
+.pg-comment {
   padding-block: var(--pg-space-3);
-  transition: background-color 0.3s ease;
+  border-bottom: var(--pg-border-width) solid var(--pg-color-border);
+  transition: background-color 0.4s ease;
 }
 
-.comment--recording-comment:last-child {
+.pg-comment:first-child {
+  padding-top: 0;
+}
+
+.pg-comment:last-child {
   border-bottom: none;
 }
 
-.pg-comment--highlighted {
-  background-color: color-mix(in srgb, var(--pg-color-accent) 15%, transparent);
+.pg-comment--highlighted,
+.pg-comment.pg-comment--highlighted {
+  background-color: color-mix(in srgb, var(--pg-color-accent) 12%, transparent);
+  margin-inline: calc(var(--pg-space-3) * -1);
+  padding-inline: var(--pg-space-3);
+  border-radius: var(--pg-radius);
+}
+
+.pg-comment__header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6em;
+  margin-bottom: var(--pg-space-1);
+  font-size: 0.8125rem;
+}
+
+.pg-comment__author {
+  font-weight: 600;
+}
+
+.pg-comment__date {
+  color: var(--pg-color-text-muted);
+}
+
+.pg-comment__permalink {
+  margin-left: auto;
+}
+
+.pg-comment__permalink a {
+  color: var(--pg-color-text-muted);
+  text-decoration: none;
+}
+
+.pg-comment__permalink a:hover {
+  color: var(--pg-color-accent);
+}
+
+.pg-comment__body {
+  line-height: 1.55;
+}
+
+.pg-comment__body p {
+  margin: 0;
 }
 
 .pg-comment-timestamp {
   display: inline-block;
   font-family: var(--pg-font-mono);
-  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--pg-color-bg);
   background: var(--pg-color-accent);
   border-radius: 999px;
-  padding: 0.125rem 0.5rem;
-  margin-bottom: var(--pg-space-1);
+  padding: 0.0625rem 0.5rem;
+}
+
+/* The "Add new comment" heading core prints above the inline form. */
+.comment-wrapper .comment-form__title,
+.comment-wrapper > h2.title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-block: var(--pg-space-4) var(--pg-space-2);
 }

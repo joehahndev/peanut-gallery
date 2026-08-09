@@ -7,23 +7,25 @@
  */
 
 :root {
-  /* Color */
-  --pg-color-bg: #ffffff;
-  --pg-color-surface: #f6f5f3;
-  --pg-color-text: #1c1b1a;
-  --pg-color-text-muted: #63605c;
-  --pg-color-accent: #b5482c;
-  --pg-color-border: #ddd9d4;
+  /* Color — a quiet, near-monochrome neutral scale with a single warm
+     accent, in keeping with a minimalist/technical aesthetic. */
+  --pg-color-bg: #fbfaf8;
+  --pg-color-surface: #f2f0ec;
+  --pg-color-surface-raised: #ffffff;
+  --pg-color-text: #171614;
+  --pg-color-text-muted: #6b6862;
+  --pg-color-accent: #c2410c;
+  --pg-color-border: #e2ded6;
   --pg-color-focus: #2e6fd6;
 
   /* Waveform player — the contract this theme exposes to the
      peanut_gallery module's JS, which reads these via getComputedStyle()
      rather than the module hardcoding any color. */
-  --pg-waveform-wave-color: #cbc6bf;
+  --pg-waveform-wave-color: #d4cfc4;
   --pg-waveform-progress-color: var(--pg-color-accent);
   --pg-waveform-cursor-color: var(--pg-color-text);
   --pg-waveform-marker-color: #2e6fd6;
-  --pg-waveform-marker-active-color: #b5482c;
+  --pg-waveform-marker-active-color: var(--pg-color-accent);
 
   /* Spacing */
   --pg-space-1: 0.25rem;
@@ -33,26 +35,30 @@
   --pg-space-5: 2.5rem;
   --pg-space-6: 4rem;
 
-  /* Type */
-  --pg-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --pg-font-mono: ui-monospace, 'SF Mono', Consolas, monospace;
-  --pg-radius: 0.375rem;
+  /* Type — JetBrains Mono throughout, for a technical/minimalist feel.
+     The system-ui fallback chain only matters before the vendored font
+     finishes loading. */
+  --pg-font-sans: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  --pg-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  --pg-radius: 0.25rem;
+  --pg-border-width: 1px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --pg-color-bg: #171615;
-    --pg-color-surface: #211f1d;
-    --pg-color-text: #efece7;
-    --pg-color-text-muted: #a39d95;
-    --pg-color-accent: #e08363;
-    --pg-color-border: #3a3733;
+    --pg-color-bg: #131211;
+    --pg-color-surface: #1c1a18;
+    --pg-color-surface-raised: #201e1b;
+    --pg-color-text: #efece5;
+    --pg-color-text-muted: #979186;
+    --pg-color-accent: #ed8b5c;
+    --pg-color-border: #322e29;
     --pg-color-focus: #6ba1ff;
 
-    --pg-waveform-wave-color: #4a463f;
+    --pg-waveform-wave-color: #3b3733;
     --pg-waveform-progress-color: var(--pg-color-accent);
     --pg-waveform-cursor-color: var(--pg-color-text);
     --pg-waveform-marker-color: #6ba1ff;
-    --pg-waveform-marker-active-color: #e08363;
+    --pg-waveform-marker-active-color: var(--pg-color-accent);
   }
 }

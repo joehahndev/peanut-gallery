@@ -65,6 +65,7 @@
 
     const markerColor = readToken(style, '--pg-waveform-marker-color', '#c0392b');
     const markerActiveColor = readToken(style, '--pg-waveform-marker-active-color', '#e74c3c');
+    const timeEl = document.querySelector(`.pg-waveform-time[data-player-id="${container.dataset.playerId}"]`);
 
     player.on('ready', () => {
       findCommentEls(container).forEach(({ el, id, timestamp }) => {
@@ -77,7 +78,20 @@
           color: markerColor,
         });
       });
+
+      if (timeEl) {
+        updateTransportTime(timeEl, player.getCurrentTime(), player.getDuration());
+      }
     });
+
+    if (timeEl) {
+      player.on('timeupdate', (currentTime) => {
+        updateTransportTime(timeEl, currentTime, player.getDuration());
+      });
+      player.on('interaction', (newTime) => {
+        updateTransportTime(timeEl, newTime, player.getDuration());
+      });
+    }
 
     regions.on('region-clicked', (region, e) => {
       e.stopPropagation();
@@ -154,5 +168,27 @@
   function readToken(style, token, fallback) {
     const value = style.getPropertyValue(token).trim();
     return value || fallback;
+  }
+
+  /**
+   * Updates the "current / total" transport time readout next to a player.
+   *
+   * @param {HTMLElement} timeEl
+   * @param {number} currentSeconds
+   * @param {number} durationSeconds
+   */
+  function updateTransportTime(timeEl, currentSeconds, durationSeconds) {
+    timeEl.textContent = `${formatTime(currentSeconds)} / ${formatTime(durationSeconds)}`;
+  }
+
+  /**
+   * @param {number} seconds
+   * @return {string}
+   */
+  function formatTime(seconds) {
+    const whole = Math.max(0, Math.round(seconds || 0));
+    const minutes = Math.floor(whole / 60);
+    const remaining = whole % 60;
+    return `${minutes}:${String(remaining).padStart(2, '0')}`;
   }
 })(Drupal, once);

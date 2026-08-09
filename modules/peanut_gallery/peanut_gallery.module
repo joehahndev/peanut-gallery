@@ -21,6 +21,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\StringTranslation\ByteSizeMarkup;
 use Drupal\node\NodeInterface;
 
 /**
@@ -186,6 +187,25 @@ function peanut_gallery_preprocess_node(array &$variables): void {
     'anonymous_comments_allowed' => $node->hasField('field_allow_anonymous_comments')
     && (bool) $node->get('field_allow_anonymous_comments')->value,
   ];
+
+  if ($variables['view_mode'] === 'full') {
+    $variables['pg_waveform']['file_name'] = $file->getFilename();
+    $variables['pg_waveform']['file_size'] = (string) ByteSizeMarkup::create($file->getSize());
+    $extension = strtoupper(pathinfo((string) $file->getFilename(), PATHINFO_EXTENSION));
+    $variables['pg_waveform']['file_extension'] = $extension ?: NULL;
+    $variables['pg_waveform']['uploaded'] = \Drupal::service('date.formatter')
+      ->format($file->getCreatedTime(), 'custom', 'F j, Y');
+
+    // If peaks have already been generated (see PeaksController/
+    // PeaksGenerator), their cached duration doubles as a free, accurate
+    // "how long is this recording" display that works even before the
+    // player's own JS has loaded/decoded anything.
+    $peaks = \Drupal::keyValue('peanut_gallery.peaks')->get('file:' . $file->id());
+    if (is_array($peaks) && isset($peaks['duration'])) {
+      $variables['pg_waveform']['duration_formatted'] = _peanut_gallery_format_timestamp((float) $peaks['duration']);
+    }
+  }
+
   $variables['#attached']['library'][] = 'peanut_gallery/waveform_player';
   $variables['#attached']['library'][] = 'peanut_gallery/comment_timestamp';
 }
@@ -202,6 +222,40 @@ function peanut_gallery_theme_suggestions_comment_alter(array &$suggestions, arr
   /** @var \Drupal\comment\CommentInterface $comment */
   $comment = $variables['elements']['#comment'];
   $suggestions[] = 'comment__' . $comment->bundle();
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for field--comment.html.twig.
+ *
+ * Reverses the comment list to newest-first. Deliberately implemented as
+ * a *suggestion*-level preprocess (field__comment, i.e. the
+ * field--comment.html.twig suggestion) rather than the base
+ * hook_preprocess_field(): Drupal always runs every base-hook
+ * implementation before any suggestion-level one, so this is guaranteed
+ * to fire after comment module's own hook_preprocess_field() has already
+ * populated $variables['comments'] — no dependency on module
+ * registration/weight order between 'comment' and 'peanut_gallery'.
+ *
+ * Known limitation: only reorders comments *within* the page Drupal's
+ * query already fetched. With more than one page of comments
+ * (per_page: 50 on this field), later pages would still show older
+ * comments in oldest-first chunks — acceptable for this module's
+ * realistic comment volumes; a query-level fix would need overriding
+ * CommentStorage::loadThread() or the formatter itself.
+ */
+function peanut_gallery_preprocess_field__comment(array &$variables): void {
+  if (($variables['field_name'] ?? NULL) !== 'field_comment' || empty($variables['comments'])) {
+    return;
+  }
+
+  $comments = $variables['comments'];
+  $pager = $comments['pager'] ?? NULL;
+  unset($comments['pager']);
+  $comments = array_reverse($comments, TRUE);
+  if ($pager !== NULL) {
+    $comments['pager'] = $pager;
+  }
+  $variables['comments'] = $comments;
 }
 
 /**
