@@ -1,0 +1,19 @@
+services:
+  peanut_gallery.access_checker:
+    class: Drupal\peanut_gallery\Access\RecordingAccessChecker
+
+  peanut_gallery.grants_builder:
+    class: Drupal\peanut_gallery\Access\RecordingGrantsBuilder
+    arguments:
+      - '@peanut_gallery.access_checker'
+
+  peanut_gallery.file_locator:
+    class: Drupal\peanut_gallery\Access\RecordingFileLocator
+    arguments:
+      - '@entity_type.manager'
+      - '@file.usage'
+
+  peanut_gallery.peaks_generator:
+    class: Drupal\peanut_gallery\Peaks\PeaksGenerator
+    arguments:
+      - '@file_system'

@@ -1,0 +1,11 @@
+name: 'Peanut Gallery'
+type: module
+description: 'Upload long audio recordings (mp3/ogg/flac) and let visitors leave comments pinned to an exact moment in the recording, via a wavesurfer.js waveform player. Recordings can be public or private, and anonymous commenting is a per-recording toggle.'
+package: 'Peanut Gallery'
+core_version_requirement: ^10.3 || ^11
+dependencies:
+  - drupal:node
+  - drupal:comment
+  - drupal:file
+  - drupal:user
+  - drupal:field

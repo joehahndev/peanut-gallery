@@ -1,0 +1,29 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.node.recording.field_allow_anonymous_comments
+    - field.field.node.recording.field_audio_file
+    - field.field.node.recording.field_comment
+    - field.field.node.recording.field_shared_with
+    - field.field.node.recording.field_visibility
+    - node.type.recording
+  module:
+    - comment
+id: node.recording.default
+targetEntityType: node
+bundle: recording
+mode: default
+content:
+  field_comment:
+    type: comment_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 20
+    region: content
+hidden:
+  field_audio_file: true
+  field_visibility: true
+  field_shared_with: true
+  field_allow_anonymous_comments: true

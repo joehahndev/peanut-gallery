@@ -1,0 +1,24 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - comment.type.recording_comment
+    - field.storage.comment.field_timestamp
+  module:
+    - comment
+id: comment.recording_comment.field_timestamp
+field_name: field_timestamp
+entity_type: comment
+bundle: recording_comment
+label: 'Timestamp (seconds)'
+description: 'The moment in the recording this comment refers to, in seconds. Filled in automatically when you click the waveform above.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ' s'
+field_type: decimal

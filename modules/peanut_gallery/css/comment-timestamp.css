@@ -1,0 +1,24 @@
+/**
+ * Non-decorative box-model only — see waveform-player.css.
+ */
+
+.pg-timestamp-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.pg-timestamp-indicator[hidden] {
+  display: none;
+}
+
+/* The raw number input stays visible/usable with JS disabled; with JS
+   enabled the friendly indicator above takes over visually. */
+html.js .pg-timestamp-field-wrapper .form-item {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -1,0 +1,15 @@
+/**
+ * Non-decorative box-model only. Colors/spacing/typography are the theme's
+ * job (see peanut_gallery_theme/css/components/waveform-player.css) — this
+ * file only guarantees the player behaves reasonably with no theme at all.
+ */
+
+.pg-waveform {
+  min-height: 96px;
+  cursor: pointer;
+}
+
+.pg-waveform:empty::after {
+  content: attr(data-loading-text);
+  display: block;
+}

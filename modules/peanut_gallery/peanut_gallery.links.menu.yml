@@ -1,0 +1,6 @@
+peanut_gallery.settings:
+  title: 'Peanut Gallery'
+  description: 'Configure default anonymous-comment behavior for new recordings.'
+  route_name: peanut_gallery.settings
+  parent: system.admin_config_media
+  weight: 10

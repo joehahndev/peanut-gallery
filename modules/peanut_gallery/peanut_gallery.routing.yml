@@ -1,0 +1,24 @@
+peanut_gallery.settings:
+  path: '/admin/config/media/peanut-gallery'
+  defaults:
+    _form: '\Drupal\peanut_gallery\Form\SettingsForm'
+    _title: 'Peanut Gallery settings'
+  requirements:
+    _permission: 'administer peanut gallery settings'
+
+peanut_gallery.peaks:
+  path: '/peanut-gallery/peaks/{node}'
+  defaults:
+    _controller: '\Drupal\peanut_gallery\Controller\PeaksController::peaks'
+  requirements:
+    # Access is enforced inside the controller itself (via $node->access()),
+    # which returns 404 rather than 403 for a denied node so an
+    # unauthorized visitor can't distinguish "private" from "no such
+    # recording" — the same posture as hook_file_download().
+    _access: 'TRUE'
+    node: \d+
+  options:
+    _format: json
+    parameters:
+      node:
+        type: entity:node

@@ -1,0 +1,44 @@
+wavesurfer:
+  remote: https://github.com/katspaugh/wavesurfer.js
+  version: 7.12.11
+  license:
+    name: BSD-3-Clause
+    url: https://github.com/katspaugh/wavesurfer.js/blob/main/LICENSE
+    gpl-compatible: true
+  js:
+    js/vendor/wavesurfer/wavesurfer.min.js: { minified: true, weight: -20 }
+
+wavesurfer.regions:
+  remote: https://github.com/katspaugh/wavesurfer.js
+  version: 7.12.11
+  license:
+    name: BSD-3-Clause
+    url: https://github.com/katspaugh/wavesurfer.js/blob/main/LICENSE
+    gpl-compatible: true
+  js:
+    js/vendor/wavesurfer/plugins/regions.min.js: { minified: true, weight: -19 }
+  dependencies:
+    - peanut_gallery/wavesurfer
+
+waveform_player:
+  js:
+    js/waveform-player.js: { weight: 0 }
+  css:
+    component:
+      css/waveform-player.css: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/once
+    - peanut_gallery/wavesurfer
+    - peanut_gallery/wavesurfer.regions
+
+comment_timestamp:
+  js:
+    js/comment-form.js: { weight: 1 }
+  css:
+    component:
+      css/comment-timestamp.css: {}
+  dependencies:
+    - core/drupal
+    - core/once

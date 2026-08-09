@@ -1,0 +1,10 @@
+{
+    "name": "peanut-gallery/peanut_gallery",
+    "description": "Upload long audio recordings and let visitors leave comments pinned to a moment in the recording, via a wavesurfer.js waveform player.",
+    "type": "drupal-custom-module",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=8.3",
+        "drupal/core": "^10.3 || ^11"
+    }
+}

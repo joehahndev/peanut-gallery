@@ -1,0 +1,24 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_audio_file
+    - node.type.recording
+  module:
+    - file
+id: node.recording.field_audio_file
+field_name: field_audio_file
+entity_type: node
+bundle: recording
+label: 'Audio file'
+description: 'Upload an mp3, ogg, or flac recording. Very long files are supported — raise your server''s upload_max_filesize/post_max_size and timeout limits to match this field''s maximum upload size.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  file_directory: 'recordings/[date:custom:Y]-[date:custom:m]'
+  file_extensions: 'mp3 ogg oga flac'
+  max_filesize: '2 GB'
+  description_field: false
+field_type: file

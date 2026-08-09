@@ -1,0 +1,9 @@
+bypass peanut gallery private recording access:
+  title: 'Bypass Peanut Gallery private recording access'
+  description: 'View, comment on, and download the audio for any recording, regardless of visibility or the shared-with list. Grant with care.'
+  restrict access: true
+
+administer peanut gallery settings:
+  title: 'Administer Peanut Gallery settings'
+  description: 'Change the default anonymous-comments setting applied to newly created recordings.'
+  restrict access: true

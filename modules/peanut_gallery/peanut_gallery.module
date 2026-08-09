@@ -1,0 +1,225 @@
+<?php
+
+/**
+ * @file
+ * Hook implementations for the Peanut Gallery module.
+ *
+ * Every access decision in this file is a thin wrapper around a single
+ * shared computation (see Drupal\peanut_gallery\Access\RecordingGrantsBuilder
+ * and Drupal\peanut_gallery\Access\RecordingFileLocator) so that the node
+ * page, the private audio download, and comment visibility can never drift
+ * out of sync with each other.
+ */
+
+declare(strict_types=1);
+
+use Drupal\comment\CommentInterface;
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityFormInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\node\NodeInterface;
+
+/**
+ * Implements hook_help().
+ */
+function peanut_gallery_help($route_name) {
+  if ($route_name === 'help.page.peanut_gallery') {
+    return '<p>' . t('Upload long audio recordings and let visitors comment on an exact moment in the recording by clicking a waveform player.') . '</p>';
+  }
+  return NULL;
+}
+
+/**
+ * Implements hook_node_access_records().
+ */
+function peanut_gallery_node_access_records(NodeInterface $node) {
+  return \Drupal::service('peanut_gallery.grants_builder')->buildAccessRecords($node);
+}
+
+/**
+ * Implements hook_node_grants().
+ */
+function peanut_gallery_node_grants(AccountInterface $account, $op) {
+  return \Drupal::service('peanut_gallery.grants_builder')->buildGrants($account, $op);
+}
+
+/**
+ * Implements hook_file_download().
+ */
+function peanut_gallery_file_download($uri) {
+  $match = \Drupal::service('peanut_gallery.file_locator')->getRecordingForUri($uri);
+  if ($match === NULL) {
+    // Not a Peanut Gallery file — abstain, don't interfere with other
+    // modules' private files.
+    return NULL;
+  }
+  [$node, $file] = $match;
+  if (!$node->access('view', \Drupal::currentUser())) {
+    return -1;
+  }
+  return [
+    'Content-Type' => $file->getMimeType(),
+    'Content-Length' => $file->getSize(),
+    // Inline (not attachment) so <audio> can stream and seek it.
+    'Content-Disposition' => 'inline; filename="' . $file->getFilename() . '"',
+    // Access varies per user — must never be cached by a shared/proxy cache.
+    'Cache-Control' => 'private',
+  ];
+}
+
+/**
+ * Implements hook_comment_create_access().
+ *
+ * Enforces the per-recording "allow anonymous comments" override. Returns
+ * AccessResult::forbidden(), never neutral(), when the override is off —
+ * forbidden() is sticky in Drupal's access-result combination, so this
+ * cannot be overridden by an allowed() elsewhere even if the anonymous role
+ * has been granted the site-wide "post comments" permission.
+ */
+function peanut_gallery_comment_create_access(AccountInterface $account, array $context, $entity_bundle) {
+  if ($entity_bundle !== 'recording_comment' || $account->isAuthenticated()) {
+    return AccessResult::neutral();
+  }
+
+  $commented_entity = $context['commented_entity'] ?? NULL;
+  if (!$commented_entity instanceof NodeInterface || !$commented_entity->hasField('field_allow_anonymous_comments')) {
+    return AccessResult::neutral();
+  }
+
+  if ((bool) $commented_entity->get('field_allow_anonymous_comments')->value) {
+    return AccessResult::neutral()->addCacheableDependency($commented_entity);
+  }
+  return AccessResult::forbidden('Anonymous comments are not allowed on this recording.')
+    ->addCacheableDependency($commented_entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_access() for the comment entity type.
+ *
+ * Closes a gap core leaves open: viewing an *existing* comment does not, by
+ * itself, re-check the host entity's view access. Without this, a private
+ * recording's comments could leak via /comment/{id}, a Views block, or
+ * JSON:API even though the recording node itself is protected.
+ */
+function peanut_gallery_comment_access(EntityInterface $entity, $operation, AccountInterface $account) {
+  if ($operation !== 'view' || !$entity instanceof CommentInterface || $entity->bundle() !== 'recording_comment') {
+    return AccessResult::neutral();
+  }
+
+  $host = $entity->getCommentedEntity();
+  if (!$host instanceof NodeInterface) {
+    return AccessResult::neutral();
+  }
+
+  $host_access = $host->access('view', $account, TRUE);
+  if (!$host_access->isAllowed()) {
+    return AccessResult::forbidden()->addCacheableDependency($host);
+  }
+  return AccessResult::neutral()->addCacheableDependency($host);
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for node.html.twig.
+ */
+function peanut_gallery_preprocess_node(array &$variables) {
+  /** @var \Drupal\node\NodeInterface $node */
+  $node = $variables['node'];
+  if ($node->bundle() !== 'recording' || !in_array($variables['view_mode'], ['full', 'teaser'], TRUE)) {
+    return;
+  }
+  if (!$node->hasField('field_audio_file') || $node->get('field_audio_file')->isEmpty()) {
+    return;
+  }
+  /** @var \Drupal\file\FileInterface|null $file */
+  $file = $node->get('field_audio_file')->entity;
+  if (!$file) {
+    return;
+  }
+
+  $variables['pg_waveform'] = [
+    'player_id' => 'pg-waveform-' . $node->id(),
+    'audio_url' => $file->createFileUrl(FALSE),
+    'anonymous_comments_allowed' => $node->hasField('field_allow_anonymous_comments')
+      && (bool) $node->get('field_allow_anonymous_comments')->value,
+  ];
+  $variables['#attached']['library'][] = 'peanut_gallery/waveform_player';
+  $variables['#attached']['library'][] = 'peanut_gallery/comment_timestamp';
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for comment.html.twig.
+ */
+function peanut_gallery_preprocess_comment(array &$variables) {
+  /** @var \Drupal\comment\CommentInterface $comment */
+  $comment = $variables['comment'];
+  if ($comment->bundle() !== 'recording_comment' || !$comment->hasField('field_timestamp') || $comment->get('field_timestamp')->isEmpty()) {
+    return;
+  }
+  $seconds = (float) $comment->get('field_timestamp')->value;
+  $variables['pg_timestamp'] = $seconds;
+  $variables['pg_timestamp_formatted'] = _peanut_gallery_format_timestamp($seconds);
+}
+
+/**
+ * Formats a number of seconds as a m:ss string.
+ */
+function _peanut_gallery_format_timestamp(float $seconds): string {
+  $whole = max(0, (int) round($seconds));
+  $minutes = intdiv($whole, 60);
+  $remaining = $whole % 60;
+  return sprintf('%d:%02d', $minutes, $remaining);
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function peanut_gallery_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
+  if ($form_id === 'node_recording_form') {
+    _peanut_gallery_alter_recording_node_form($form, $form_state);
+  }
+  elseif (str_starts_with($form_id, 'comment_recording_comment_form')) {
+    _peanut_gallery_alter_recording_comment_form($form, $form_state);
+  }
+}
+
+/**
+ * Seeds the anonymous-comments default for newly created recordings.
+ */
+function _peanut_gallery_alter_recording_node_form(array &$form, FormStateInterface $form_state): void {
+  $form_object = $form_state->getFormObject();
+  if (!$form_object instanceof EntityFormInterface) {
+    return;
+  }
+  $node = $form_object->getEntity();
+  if (!$node instanceof NodeInterface || !$node->isNew() || !isset($form['field_allow_anonymous_comments']['widget']['value'])) {
+    return;
+  }
+  $default = \Drupal::config('peanut_gallery.settings')->get('default_allow_anonymous_comments');
+  $form['field_allow_anonymous_comments']['widget']['value']['#default_value'] = (bool) $default;
+}
+
+/**
+ * Styles the timestamp widget and applies the no-JS query-param fallback.
+ */
+function _peanut_gallery_alter_recording_comment_form(array &$form, FormStateInterface $form_state): void {
+  if (!isset($form['field_timestamp']['widget'][0]['value'])) {
+    return;
+  }
+  $form['field_timestamp']['#attributes']['class'][] = 'pg-timestamp-field-wrapper';
+  $form['field_timestamp']['#weight'] = -10;
+
+  $widget = &$form['field_timestamp']['widget'][0]['value'];
+  $widget['#description'] = t('Click the waveform above to set this automatically, or enter the number of seconds into the recording manually.');
+
+  // Progressive-enhancement fallback for JS-disabled clients following a
+  // "seek to this point and comment" link built as ?t=123.4.
+  $request = \Drupal::request();
+  if (!isset($widget['#default_value']) && $request->query->has('t')) {
+    $seconds = (float) $request->query->get('t');
+    if ($seconds >= 0) {
+      $widget['#default_value'] = $seconds;
+    }
+  }
+}

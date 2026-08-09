@@ -1,0 +1,88 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall hooks for the Peanut Gallery module.
+ */
+
+declare(strict_types=1);
+
+use Drupal\Component\Utility\Bytes;
+use Drupal\field\Entity\FieldConfig;
+
+/**
+ * Implements hook_install().
+ *
+ * Installing this module changes the effective node access model (see
+ * Drupal\peanut_gallery\Access\RecordingGrantsBuilder), so existing content's
+ * grants must be rebuilt.
+ */
+function peanut_gallery_install(): void {
+  node_access_needs_rebuilding(TRUE);
+}
+
+/**
+ * Implements hook_uninstall().
+ *
+ * The access model reverts on uninstall too, so grants need rebuilding
+ * again to restore the pre-install behavior.
+ */
+function peanut_gallery_uninstall(): void {
+  node_access_needs_rebuilding(TRUE);
+}
+
+/**
+ * Implements hook_requirements().
+ *
+ * Raising the Recording audio field's own "maximum upload size" setting is
+ * not sufficient by itself — PHP's upload_max_filesize/post_max_size (and,
+ * operationally, the webserver's own request-size/timeout limits) must be
+ * raised to match, or long recordings will still be rejected.
+ */
+function peanut_gallery_requirements($phase) {
+  $requirements = [];
+  if ($phase !== 'runtime') {
+    return $requirements;
+  }
+
+  $field = FieldConfig::loadByName('node', 'recording', 'field_audio_file');
+  $field_max_setting = $field?->getSetting('max_filesize');
+  if (!$field || empty($field_max_setting)) {
+    return $requirements;
+  }
+
+  $field_max_bytes = Bytes::toNumber($field_max_setting);
+  $php_max_bytes = min(
+    Bytes::toNumber((string) ini_get('upload_max_filesize')),
+    Bytes::toNumber((string) ini_get('post_max_size')),
+  );
+
+  if ($php_max_bytes < $field_max_bytes) {
+    $requirements['peanut_gallery_upload_limits'] = [
+      'title' => t('Peanut Gallery upload limits'),
+      'value' => t('PHP currently allows uploads up to @php, but the Recording audio file field allows up to @field.', [
+        '@php' => format_size($php_max_bytes),
+        '@field' => format_size($field_max_bytes),
+      ]),
+      'description' => t('Raise upload_max_filesize and post_max_size (and check your webserver\'s own request-size and timeout limits, e.g. nginx client_max_body_size/fastcgi_read_timeout) to match, or lower the field\'s "Maximum upload size".'),
+      'severity' => REQUIREMENT_WARNING,
+    ];
+  }
+
+  /** @var \Drupal\peanut_gallery\Peaks\PeaksGenerator $peaksGenerator */
+  $peaksGenerator = \Drupal::service('peanut_gallery.peaks_generator');
+  $requirements['peanut_gallery_peaks'] = $peaksGenerator->isAvailable()
+    ? [
+      'title' => t('Peanut Gallery waveform peaks'),
+      'value' => t('ffmpeg found — waveforms will be precomputed and cached on first play.'),
+      'severity' => REQUIREMENT_OK,
+    ]
+    : [
+      'title' => t('Peanut Gallery waveform peaks'),
+      'value' => t('ffmpeg not found — waveforms will decode client-side, which is slower for long recordings.'),
+      'description' => t('Optional: install ffmpeg (commonly available in dev environments) and run <code>drush peanut-gallery:peaks-backfill</code>. Peaks are stored in the database, so a database sync to a host without ffmpeg (e.g. shared hosting) still serves cached peaks fine.'),
+      'severity' => REQUIREMENT_INFO,
+    ];
+
+  return $requirements;
+}

@@ -1,0 +1,9 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: recording_comment
+label: 'Recording comment'
+target_entity_type_id: node
+description: 'Timestamped comment used only on Peanut Gallery Recording nodes.'

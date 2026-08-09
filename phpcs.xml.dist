@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="peanut_gallery">
+  <description>PHP CodeSniffer configuration for the Peanut Gallery suite.</description>
+
+  <file>modules</file>
+  <file>themes</file>
+
+  <arg name="extensions" value="php,module,install,theme,inc"/>
+  <arg name="cache" value=".phpcs-cache"/>
+  <arg value="p"/>
+
+  <rule ref="Drupal"/>
+  <rule ref="DrupalPractice"/>
+</ruleset>

@@ -1,0 +1,24 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - comment.type.recording_comment
+    - field.field.comment.recording_comment.comment_body
+    - field.field.comment.recording_comment.field_timestamp
+  module:
+    - text
+id: comment.recording_comment.default
+targetEntityType: comment
+bundle: recording_comment
+mode: default
+content:
+  comment_body:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 0
+    region: content
+hidden:
+  subject: true
+  field_timestamp: true

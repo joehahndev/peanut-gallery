@@ -1,0 +1,26 @@
+{
+    "name": "peanut-gallery/peanut-gallery-suite-dev",
+    "description": "Development meta-package for the Peanut Gallery suite. Not installed into sites; see modules/peanut_gallery, themes/peanut_gallery_theme.",
+    "type": "project",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=8.3"
+    },
+    "require-dev": {
+        "drupal/coder": "^8.3",
+        "mglaman/phpstan-drupal": "^2.0",
+        "phpstan/phpstan-deprecation-rules": "^2.0"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "scripts": {
+        "lint": "phpcs",
+        "lint-fix": "phpcbf",
+        "analyze": "phpstan analyse"
+    }
+}

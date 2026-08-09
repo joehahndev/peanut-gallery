@@ -1,0 +1,21 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_allow_anonymous_comments
+    - node.type.recording
+id: node.recording.field_allow_anonymous_comments
+field_name: field_allow_anonymous_comments
+entity_type: node
+bundle: recording
+label: 'Allow anonymous comments'
+description: 'When enabled, visitors who are not logged in may post comments on this recording (still subject to the site''s comment permissions).'
+required: false
+translatable: false
+default_value:
+  - value: 0
+default_value_callback: ''
+settings:
+  on_label: Allowed
+  off_label: 'Not allowed'
+field_type: boolean

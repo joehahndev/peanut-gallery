@@ -1,0 +1,17 @@
+# Run from inside the DDEV web container of the peanut-gallery-demo site (which
+# has drupal/core installed and this suite's module+theme symlinked in via its
+# composer path repositories), with the site root as cwd so Drupal core is
+# auto-discovered:
+#   cd /var/www/html && vendor/bin/phpstan analyse \
+#     -c /mnt/c/dev/peanut-gallery/phpstan.neon
+# phpstan-drupal and the deprecation rules are auto-registered by
+# phpstan/extension-installer (a require-dev of the demo site), so they are not
+# included manually here — doing both double-registers the Drupal ServiceMap.
+parameters:
+	level: 6
+	paths:
+		- /mnt/c/dev/peanut-gallery/modules
+		- /mnt/c/dev/peanut-gallery/themes
+	ignoreErrors:
+		# Drupal hooks and Form API conventionally use untyped arrays.
+		- identifier: missingType.iterableValue

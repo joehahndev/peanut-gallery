@@ -1,0 +1,27 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - comment.type.recording_comment
+    - field.storage.node.field_comment
+    - node.type.recording
+  module:
+    - comment
+id: node.recording.field_comment
+field_name: field_comment
+entity_type: node
+bundle: recording
+label: Comments
+description: ''
+required: false
+translatable: true
+default_value:
+  - status: 2
+default_value_callback: ''
+settings:
+  default_mode: 1
+  per_page: 50
+  form_location: true
+  anonymous: 1
+  preview: 1
+field_type: comment

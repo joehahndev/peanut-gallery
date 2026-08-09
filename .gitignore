@@ -1,0 +1,22 @@
+# Secrets — never commit.
+.private/
+
+# Composer / PHP tooling
+/vendor/
+composer.phar
+
+# PHPUnit / test artifacts
+/tests/output/
+.phpunit.result.cache
+
+# PHPStan cache
+/.phpstan-cache/
+
+# Editor/OS cruft
+.DS_Store
+Thumbs.db
+*.swp
+
+# DDEV (this repo only ever uses a lightweight harness project, not a full site)
+/.ddev/.*
+/.ddev/db_snapshots
