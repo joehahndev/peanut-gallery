@@ -17,3 +17,13 @@ services:
     class: Drupal\peanut_gallery\Peaks\PeaksGenerator
     arguments:
       - '@file_system'
+
+  peanut_gallery.comment_reply_access_check:
+    class: Drupal\peanut_gallery\Access\RecordingCommentReplyAccessCheck
+    tags:
+      - { name: access_check, applies_to: _peanut_gallery_recording_comment_reply_access }
+
+  peanut_gallery.route_subscriber:
+    class: Drupal\peanut_gallery\Routing\RouteSubscriber
+    tags:
+      - { name: event_subscriber }

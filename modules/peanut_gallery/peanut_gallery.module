@@ -74,36 +74,64 @@ function peanut_gallery_file_download(string $uri): array|int|null {
 /**
  * Implements hook_comment_create_access().
  *
- * Enforces the per-recording "allow anonymous comments" override. Returns
- * AccessResult::forbidden(), never neutral(), when the override is off —
- * forbidden() is sticky in Drupal's access-result combination, so this
- * cannot be overridden by an allowed() elsewhere even if the anonymous role
- * has been granted the site-wide "post comments" permission.
+ * This covers the generic entity API (e.g. code calling
+ * Comment::create(...)->access('create')), but NOT the actual
+ * comment.reply route real visitors submit comments through — see
+ * hook_route_alter() and RecordingCommentReplyAccessCheck for why that
+ * needs its own, separate enforcement.
+ *
+ * Two independent checks here:
+ * - View-gates comment creation on the host recording. This is required,
+ *   not optional: CommentAccessControlHandler::checkCreateAccess() is
+ *   nothing more than a flat 'post comments' permission check — it never
+ *   verifies the account can view the commented entity at all. Without
+ *   this, any authenticated user holding the generic 'post comments'
+ *   permission could comment on any private recording, sharing/visibility
+ *   entirely bypassed.
+ * - Enforces the per-recording "allow anonymous comments" override on top
+ *   of that. Returns AccessResult::forbidden(), never neutral(), when the
+ *   override is off — forbidden() is sticky in Drupal's access-result
+ *   combination, so this cannot be overridden by an allowed() elsewhere
+ *   even if the anonymous role has been granted 'post comments' too.
  */
 function peanut_gallery_comment_create_access(AccountInterface $account, array $context, string $entity_bundle): AccessResultInterface {
-  if ($entity_bundle !== 'recording_comment' || $account->isAuthenticated()) {
+  if ($entity_bundle !== 'recording_comment') {
     return AccessResult::neutral();
   }
 
   $commented_entity = $context['commented_entity'] ?? NULL;
-  if (!$commented_entity instanceof NodeInterface || !$commented_entity->hasField('field_allow_anonymous_comments')) {
+  if (!$commented_entity instanceof NodeInterface) {
     return AccessResult::neutral();
   }
 
-  if ((bool) $commented_entity->get('field_allow_anonymous_comments')->value) {
-    return AccessResult::neutral()->addCacheableDependency($commented_entity);
+  $view_access = $commented_entity->access('view', $account, TRUE);
+  if (!$view_access->isAllowed()) {
+    return AccessResult::forbidden()->addCacheableDependency($view_access);
+  }
+
+  if ($account->isAuthenticated()) {
+    return AccessResult::neutral()->addCacheableDependency($view_access);
+  }
+
+  if ($commented_entity->hasField('field_allow_anonymous_comments') && (bool) $commented_entity->get('field_allow_anonymous_comments')->value) {
+    return AccessResult::neutral()->addCacheableDependency($commented_entity)->addCacheableDependency($view_access);
   }
   return AccessResult::forbidden('Anonymous comments are not allowed on this recording.')
-    ->addCacheableDependency($commented_entity);
+    ->addCacheableDependency($commented_entity)
+    ->addCacheableDependency($view_access);
 }
 
 /**
  * Implements hook_ENTITY_TYPE_access() for the comment entity type.
  *
- * Closes a gap core leaves open: viewing an *existing* comment does not, by
- * itself, re-check the host entity's view access. Without this, a private
- * recording's comments could leak via /comment/{id}, a Views block, or
- * JSON:API even though the recording node itself is protected.
+ * Two independent checks, both restriction-only:
+ * - Closes a gap core leaves open: viewing an *existing* comment does not,
+ *   by itself, re-check the host entity's view access. Without this, a
+ *   private recording's comments could leak via /comment/{id}, a Views
+ *   block, or JSON:API even though the recording node itself is protected.
+ * - Enforces the recording's "comments visible to shared listeners"
+ *   toggle: when off, a non-owner, non-bypass viewer only sees comments
+ *   they authored themselves or that the owner authored.
  */
 function peanut_gallery_comment_access(EntityInterface $entity, string $operation, AccountInterface $account): AccessResultInterface {
   if ($operation !== 'view' || !$entity instanceof CommentInterface || $entity->bundle() !== 'recording_comment') {
@@ -117,9 +145,21 @@ function peanut_gallery_comment_access(EntityInterface $entity, string $operatio
 
   $host_access = $host->access('view', $account, TRUE);
   if (!$host_access->isAllowed()) {
-    return AccessResult::forbidden()->addCacheableDependency($host);
+    return AccessResult::forbidden()->addCacheableDependency($host_access);
   }
-  return AccessResult::neutral()->addCacheableDependency($host);
+
+  if (!$account->hasPermission('bypass peanut gallery private recording access')) {
+    $can_view = \Drupal::service('peanut_gallery.access_checker')
+      ->canViewCommentUnderIsolation($host, $account, (int) $entity->getOwnerId());
+    if (!$can_view) {
+      return AccessResult::forbidden()
+        ->cachePerUser()
+        ->addCacheableDependency($host)
+        ->addCacheableDependency($entity);
+    }
+  }
+
+  return AccessResult::neutral()->addCacheableDependency($host_access);
 }
 
 /**
@@ -148,6 +188,20 @@ function peanut_gallery_preprocess_node(array &$variables): void {
   ];
   $variables['#attached']['library'][] = 'peanut_gallery/waveform_player';
   $variables['#attached']['library'][] = 'peanut_gallery/comment_timestamp';
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK_alter() for comment templates.
+ *
+ * Unlike node, core's comment entity type does not add a
+ * comment__{comment_type} suggestion on its own (comment's hook_theme()
+ * declares no 'bundle' key), so comment--recording-comment.html.twig would
+ * otherwise never be picked up.
+ */
+function peanut_gallery_theme_suggestions_comment_alter(array &$suggestions, array $variables): void {
+  /** @var \Drupal\comment\CommentInterface $comment */
+  $comment = $variables['elements']['#comment'];
+  $suggestions[] = 'comment__' . $comment->bundle();
 }
 
 /**
@@ -203,9 +257,42 @@ function _peanut_gallery_alter_recording_node_form(array &$form, FormStateInterf
 }
 
 /**
- * Styles the timestamp widget and applies the no-JS query-param fallback.
+ * Enforces the anonymous-comments override, styles the timestamp widget.
+ *
+ * The enforcement here matters, not just the styling: when a Recording's
+ * comment field is configured to display inline (form_location: true, as
+ * this module ships it — needed so the form sits next to the waveform
+ * player), core's CommentDefaultFormatter::viewElements() decides whether
+ * to build this form based purely on the flat 'post comments' permission.
+ * It never consults hook_comment_create_access() at all, so that hook
+ * alone would leave anonymous users able to submit comments on any
+ * recording with the per-recording flag off, as long as the anonymous
+ * role has the generic 'post comments' permission. This must be enforced
+ * here instead.
  */
 function _peanut_gallery_alter_recording_comment_form(array &$form, FormStateInterface $form_state): void {
+  $form_object = $form_state->getFormObject();
+  if ($form_object instanceof EntityFormInterface) {
+    $comment = $form_object->getEntity();
+    $host = $comment instanceof CommentInterface ? $comment->getCommentedEntity() : NULL;
+    if ($host instanceof NodeInterface) {
+      $can_create = \Drupal::entityTypeManager()->getAccessControlHandler('comment')->createAccess(
+        'recording_comment',
+        \Drupal::currentUser(),
+        ['commented_entity' => $host, 'field_name' => 'field_comment'],
+      );
+      if (!$can_create) {
+        // #access alone does not stop Form API from processing
+        // validate/submit handlers for a request supplying a
+        // guessed/replayed form_build_id, so also block submission
+        // explicitly below rather than relying on this to hide the form.
+        $form['#access'] = FALSE;
+        $form['#validate'][] = '_peanut_gallery_deny_comment_submission';
+        return;
+      }
+    }
+  }
+
   if (!isset($form['field_timestamp']['widget'][0]['value'])) {
     return;
   }
@@ -224,4 +311,14 @@ function _peanut_gallery_alter_recording_comment_form(array &$form, FormStateInt
       $widget['#default_value'] = $seconds;
     }
   }
+}
+
+/**
+ * Form #validate callback: unconditionally blocks submission.
+ *
+ * Paired with #access = FALSE in _peanut_gallery_alter_recording_comment_form()
+ * — see that function's docblock for why both are needed.
+ */
+function _peanut_gallery_deny_comment_submission(array &$form, FormStateInterface $form_state): void {
+  $form_state->setErrorByName('', t('You are not allowed to comment on this recording.'));
 }

@@ -37,13 +37,16 @@
     wrapper.insertBefore(indicator, wrapper.firstChild);
 
     const render = () => {
-      if (currentSeconds === null) {
-        indicator.innerHTML = '';
-        indicator.hidden = true;
-        return;
-      }
       indicator.hidden = false;
       indicator.innerHTML = '';
+
+      if (currentSeconds === null) {
+        const prompt = document.createElement('span');
+        prompt.className = 'pg-timestamp-indicator__label pg-timestamp-indicator__label--prompt';
+        prompt.textContent = Drupal.t('Click the waveform above to set when this comment happened.');
+        indicator.appendChild(prompt);
+        return;
+      }
 
       const label = document.createElement('span');
       label.className = 'pg-timestamp-indicator__label';
@@ -59,8 +62,13 @@
     };
 
     const setSeconds = (seconds) => {
-      currentSeconds = seconds;
-      input.value = seconds === null ? '' : seconds;
+      // The field is decimal(10,3) / step="0.001" — wavesurfer's raw time
+      // values have far more float precision than that, which fails the
+      // input's HTML5 step constraint and silently blocks submission
+      // (the constraint-violation tooltip has nothing visible to anchor
+      // to, since this field is visually hidden once JS is active).
+      currentSeconds = seconds === null ? null : Math.round(seconds * 1000) / 1000;
+      input.value = currentSeconds === null ? '' : currentSeconds;
       render();
     };
 

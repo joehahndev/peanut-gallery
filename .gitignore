@@ -20,3 +20,6 @@ Thumbs.db
 # DDEV (this repo only ever uses a lightweight harness project, not a full site)
 /.ddev/.*
 /.ddev/db_snapshots
+
+# Playwright MCP debug artifacts
+.playwright-mcp/

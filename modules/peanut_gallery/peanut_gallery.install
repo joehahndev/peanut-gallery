@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 use Drupal\Component\Utility\Bytes;
+use Drupal\Core\Hook\Attribute\LegacyRequirementsHook;
 use Drupal\Core\StringTranslation\ByteSizeMarkup;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\node\NodeAccessRebuild;
@@ -16,37 +17,64 @@ use Drupal\node\NodeAccessRebuild;
  * Implements hook_install().
  *
  * Installing this module changes the effective node access model (see
- * Drupal\peanut_gallery\Access\RecordingGrantsBuilder), so existing content's
- * grants must be rebuilt.
+ * Drupal\peanut_gallery\Access\RecordingGrantsBuilder). Critically, this
+ * rebuilds grants IMMEDIATELY rather than just flagging "needs rebuild"
+ * for an admin to notice later: before peanut_gallery existed, node module
+ * (or no node-access module at all) will have written a permissive
+ * "default grant" row (nid 0, realm 'all', gid 0) that makes every
+ * published node visible regardless of our own grants — the query in
+ * NodeGrantDatabaseStorage::access() always ORs that row in for published
+ * nodes. That stale row isn't removed by merely setting the "needs
+ * rebuild" flag; only an actual rebuild deletes and recomputes it. Leaving
+ * this until an admin happens to click "Rebuild permissions" would mean
+ * every private recording is effectively public from the moment this
+ * module is enabled until they do — unacceptable for a module whose whole
+ * purpose is enforcing that privacy.
  */
 function peanut_gallery_install(): void {
-  _peanut_gallery_flag_node_access_rebuild();
+  _peanut_gallery_rebuild_node_access(TRUE);
 }
 
 /**
  * Implements hook_uninstall().
  *
- * The access model reverts on uninstall too, so grants need rebuilding
- * again to restore the pre-install behavior.
+ * The access model reverts on uninstall too. This case is lower-urgency
+ * (uninstalling a privacy-restricting module making content MORE visible
+ * again is a "fail open" admins are likely to expect/notice), so flagging
+ * for the normal admin-triggered rebuild is sufficient here.
  */
 function peanut_gallery_uninstall(): void {
-  _peanut_gallery_flag_node_access_rebuild();
+  _peanut_gallery_rebuild_node_access(FALSE);
 }
 
 /**
- * Flags node access grants as needing a rebuild, across core versions.
+ * Rebuilds node access grants, or flags them for rebuild, across core versions.
  *
- * The old node_access_needs_rebuilding() function was deprecated in
- * drupal:11.4.0 and is already fully removed as of this writing — replaced
- * by the NodeAccessRebuild service. This module's core_version_requirement
- * spans both, so support both rather than assuming either is present.
+ * The old node_access_needs_rebuilding()/node_access_rebuild() functions
+ * were deprecated in drupal:11.4.0 and are already fully removed as of
+ * this writing — replaced by the NodeAccessRebuild service. This module's
+ * core_version_requirement spans both, so support both rather than
+ * assuming either is present.
  */
-function _peanut_gallery_flag_node_access_rebuild(): void {
+function _peanut_gallery_rebuild_node_access(bool $immediately): void {
   if (class_exists(NodeAccessRebuild::class) && \Drupal::hasService(NodeAccessRebuild::class)) {
-    \Drupal::service(NodeAccessRebuild::class)->setNeedsRebuild(TRUE);
+    $rebuilder = \Drupal::service(NodeAccessRebuild::class);
+    if ($immediately) {
+      $rebuilder->rebuild();
+    }
+    else {
+      $rebuilder->setNeedsRebuild(TRUE);
+    }
     return;
   }
-  if (function_exists('node_access_needs_rebuilding')) {
+
+  if ($immediately && function_exists('node_access_rebuild')) {
+    // Only reached on core versions where NodeAccessRebuild doesn't exist
+    // yet, i.e. where this isn't actually deprecated.
+    // @phpstan-ignore function.deprecated
+    node_access_rebuild();
+  }
+  elseif (function_exists('node_access_needs_rebuilding')) {
     node_access_needs_rebuilding(TRUE);
   }
 }
@@ -59,6 +87,7 @@ function _peanut_gallery_flag_node_access_rebuild(): void {
  * operationally, the webserver's own request-size/timeout limits) must be
  * raised to match, or long recordings will still be rejected.
  */
+#[LegacyRequirementsHook]
 function peanut_gallery_requirements(string $phase): array {
   $requirements = [];
   if ($phase !== 'runtime') {

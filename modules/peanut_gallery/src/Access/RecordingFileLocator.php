@@ -14,6 +14,16 @@ use Drupal\file\FileUsage\FileUsageInterface;
  * Used by hook_file_download() so that a private audio file is gated by
  * exactly the same access decision as its node page — never a separate,
  * potentially-drifting copy of the logic.
+ *
+ * Known limitation: if the exact same File entity is ever attached to more
+ * than one Recording (e.g. by reusing an existing upload instead of
+ * uploading a fresh copy), this returns whichever matching node happens
+ * to load first — that node's access rules alone then gate the download,
+ * which could under- or over-restrict relative to the other recording(s)
+ * sharing the file. Each recording getting its own distinct File entity
+ * (the normal case — every upload creates a new one) avoids this
+ * entirely; it was only encountered here because an earlier version of
+ * this module's own demo seed data reused one file across two recordings.
  */
 class RecordingFileLocator {
 

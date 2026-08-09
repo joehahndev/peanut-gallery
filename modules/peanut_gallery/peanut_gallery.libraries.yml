@@ -35,7 +35,7 @@ waveform_player:
 
 comment_timestamp:
   js:
-    js/comment-form.js: { weight: 1 }
+    js/comment-form.js: {}
   css:
     component:
       css/comment-timestamp.css: {}

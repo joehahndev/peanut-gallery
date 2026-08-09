@@ -5,6 +5,7 @@ dependencies:
     - field.field.node.recording.field_allow_anonymous_comments
     - field.field.node.recording.field_audio_file
     - field.field.node.recording.field_comment
+    - field.field.node.recording.field_comments_visible_to_shared
     - field.field.node.recording.field_shared_with
     - field.field.node.recording.field_visibility
     - node.type.recording
@@ -27,3 +28,4 @@ hidden:
   field_visibility: true
   field_shared_with: true
   field_allow_anonymous_comments: true
+  field_comments_visible_to_shared: true

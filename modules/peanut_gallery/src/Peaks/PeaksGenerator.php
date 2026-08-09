@@ -108,13 +108,16 @@ class PeaksGenerator {
         break;
       }
       $end = min($start + $bucketSize, $sampleCount);
-      // Stride within the bucket: a handful of probes is plenty for a
-      // display-only peak, and keeps this fast even on hour-long files.
-      $stride = max(1, intdiv($end - $start, 8));
 
+      // Unpack the whole bucket in one call (fast) and scan every sample
+      // in it for the true max (accurate) — one bucket's worth of shorts
+      // at a time keeps memory bounded even on hour-long files, rather
+      // than unpacking the entire recording into a single PHP array.
+      // (An earlier version of this method only probed a handful of
+      // strided samples per bucket, which is fine for typical music but
+      // can under-sample a narrow peak in near-periodic signals.)
       $max = 0;
-      for ($i = $start; $i < $end; $i += $stride) {
-        $sample = unpack('s', substr($pcm, $i * 2, 2))[1];
+      foreach (unpack('s*', substr($pcm, $start * 2, ($end - $start) * 2)) as $sample) {
         $abs = abs($sample);
         if ($abs > $max) {
           $max = $abs;

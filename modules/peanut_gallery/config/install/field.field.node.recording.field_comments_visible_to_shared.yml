@@ -1,0 +1,21 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_comments_visible_to_shared
+    - node.type.recording
+id: node.recording.field_comments_visible_to_shared
+field_name: field_comments_visible_to_shared
+entity_type: node
+bundle: recording
+label: 'Shared listeners can see each other''s comments'
+description: 'When unchecked, each listener who is not the owner only sees their own comments plus the owner''s — never other listeners'' comments. The owner and anyone with the bypass permission always see every comment.'
+required: false
+translatable: false
+default_value:
+  - value: 1
+default_value_callback: ''
+settings:
+  on_label: 'Visible to all'
+  off_label: 'Isolated per listener'
+field_type: boolean
