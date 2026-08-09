@@ -1,0 +1,27 @@
+name: 'Peanut Gallery'
+type: theme
+description: 'A modern, buildless companion theme for the Peanut Gallery module: light/dark design tokens, no CSS framework, no JS build step.'
+package: 'Peanut Gallery'
+core_version_requirement: ^10.3 || ^11
+'base theme': false
+hidden: false
+version: VERSION
+libraries:
+  - peanut_gallery_theme/base
+  - peanut_gallery_theme/messages
+  - core/normalize
+libraries-extend:
+  user/drupal.user:
+    - peanut_gallery_theme/user
+  core/drupal.dropbutton:
+    - peanut_gallery_theme/dropbutton
+  core/drupal.dialog:
+    - peanut_gallery_theme/dialog
+  file/drupal.file:
+    - peanut_gallery_theme/file
+  core/drupal.item-list:
+    - peanut_gallery_theme/item-list
+  core/drupal.progress:
+    - peanut_gallery_theme/progress
+  core/drupal.tablesort:
+    - peanut_gallery_theme/drupal.tablesort

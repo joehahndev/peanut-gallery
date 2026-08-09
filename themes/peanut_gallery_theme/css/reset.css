@@ -1,0 +1,33 @@
+/**
+ * Minimal modern reset — not a framework, just the handful of resets that
+ * make the tokens above behave predictably.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+}
+
+img,
+picture,
+video,
+audio {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}

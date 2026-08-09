@@ -1,0 +1,41 @@
+{#
+/**
+ * @file
+ * Theme override for a timestamped Recording comment.
+ *
+ * In addition to the standard comment.html.twig variables, this expects
+ * `pg_timestamp` and `pg_timestamp_formatted` (set by
+ * peanut_gallery_preprocess_comment()). The timestamp badge is rendered as
+ * plain text, not a link — it only becomes an interactive seek control
+ * once peanut_gallery's JS attaches (see waveform-player.js, which reads
+ * data-comment-id/data-timestamp off this article element), so a no-JS
+ * visitor never sees a dead/misleading control.
+ */
+#}
+{%
+  set classes = [
+    'comment',
+    'js-comment',
+    status != 'published' ? status,
+    comment.owner.anonymous ? 'by-anonymous',
+    author_id and author_id == commented_entity.getOwnerId() ? 'by-' ~ commented_entity.getEntityTypeId() ~ '-author',
+  ]
+%}
+<article{{ attributes.addClass(classes) }}
+  {%- if pg_timestamp is not null %} data-comment-id="{{ comment.id }}" data-timestamp="{{ pg_timestamp }}"{% endif -%}
+>
+  {% if submitted %}
+    <footer class="comment__meta">
+      {{ user_picture }}
+      <p class="comment__submitted">{{ submitted }}</p>
+      {{ permalink }}
+    </footer>
+  {% endif %}
+
+  <div{{ content_attributes.addClass('content') }}>
+    {% if pg_timestamp_formatted %}
+      <span class="pg-comment-timestamp">{{ pg_timestamp_formatted }}</span>
+    {% endif %}
+    {{ content }}
+  </div>
+</article>

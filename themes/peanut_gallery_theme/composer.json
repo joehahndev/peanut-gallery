@@ -1,0 +1,10 @@
+{
+    "name": "peanut-gallery/peanut_gallery_theme",
+    "description": "Modern, buildless companion theme for the Peanut Gallery module.",
+    "type": "drupal-custom-theme",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=8.3",
+        "drupal/core": "^10.3 || ^11"
+    }
+}

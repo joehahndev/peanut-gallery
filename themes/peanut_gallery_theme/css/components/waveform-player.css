@@ -1,0 +1,26 @@
+/**
+ * Decorative styling for the waveform player container. The
+ * peanut_gallery module owns box-model basics (min-height, cursor); this
+ * theme owns everything visual, plus the color-token contract the
+ * module's JS reads via getComputedStyle().
+ */
+
+.pg-waveform {
+  background: var(--pg-color-surface);
+  border: 1px solid var(--pg-color-border);
+  border-radius: var(--pg-radius);
+  padding: var(--pg-space-2);
+  margin-block: var(--pg-space-3);
+}
+
+.pg-waveform:empty::after {
+  color: var(--pg-color-text-muted);
+  font-size: 0.875rem;
+  padding: var(--pg-space-3);
+}
+
+.pg-waveform-noscript {
+  color: var(--pg-color-text-muted);
+  font-size: 0.875rem;
+  font-style: italic;
+}

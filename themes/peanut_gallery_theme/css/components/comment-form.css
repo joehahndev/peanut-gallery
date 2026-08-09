@@ -1,0 +1,30 @@
+/**
+ * Styling for the "Commenting at 1:23" indicator the peanut_gallery
+ * module's comment-form.js builds inside .pg-timestamp-field-wrapper.
+ */
+
+.pg-timestamp-field-wrapper {
+  background: var(--pg-color-surface);
+  border: 1px solid var(--pg-color-border);
+  border-radius: var(--pg-radius);
+  padding: var(--pg-space-2) var(--pg-space-3);
+  margin-bottom: var(--pg-space-3);
+}
+
+.pg-timestamp-indicator__label {
+  font-weight: 600;
+}
+
+.pg-timestamp-indicator__clear {
+  background: none;
+  border: 1px solid var(--pg-color-border);
+  border-radius: var(--pg-radius);
+  padding: 0.125rem 0.5rem;
+  cursor: pointer;
+  color: var(--pg-color-text-muted);
+}
+
+.pg-timestamp-indicator__clear:hover {
+  border-color: var(--pg-color-accent);
+  color: var(--pg-color-accent);
+}

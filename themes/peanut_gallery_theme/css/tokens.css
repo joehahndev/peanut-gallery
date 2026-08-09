@@ -1,0 +1,58 @@
+/**
+ * Design tokens. No framework, no preprocessor — every token is a custom
+ * property, redefined wholesale under prefers-color-scheme: dark. This is
+ * the only place color/spacing/type decisions get made; every other
+ * stylesheet in this theme (and the peanut_gallery module's own minimal
+ * box-model CSS) should reference these tokens, never a literal color.
+ */
+
+:root {
+  /* Color */
+  --pg-color-bg: #ffffff;
+  --pg-color-surface: #f6f5f3;
+  --pg-color-text: #1c1b1a;
+  --pg-color-text-muted: #63605c;
+  --pg-color-accent: #b5482c;
+  --pg-color-border: #ddd9d4;
+  --pg-color-focus: #2e6fd6;
+
+  /* Waveform player — the contract this theme exposes to the
+     peanut_gallery module's JS, which reads these via getComputedStyle()
+     rather than the module hardcoding any color. */
+  --pg-waveform-wave-color: #cbc6bf;
+  --pg-waveform-progress-color: var(--pg-color-accent);
+  --pg-waveform-cursor-color: var(--pg-color-text);
+  --pg-waveform-marker-color: #2e6fd6;
+  --pg-waveform-marker-active-color: #b5482c;
+
+  /* Spacing */
+  --pg-space-1: 0.25rem;
+  --pg-space-2: 0.5rem;
+  --pg-space-3: 1rem;
+  --pg-space-4: 1.5rem;
+  --pg-space-5: 2.5rem;
+  --pg-space-6: 4rem;
+
+  /* Type */
+  --pg-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --pg-font-mono: ui-monospace, 'SF Mono', Consolas, monospace;
+  --pg-radius: 0.375rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pg-color-bg: #171615;
+    --pg-color-surface: #211f1d;
+    --pg-color-text: #efece7;
+    --pg-color-text-muted: #a39d95;
+    --pg-color-accent: #e08363;
+    --pg-color-border: #3a3733;
+    --pg-color-focus: #6ba1ff;
+
+    --pg-waveform-wave-color: #4a463f;
+    --pg-waveform-progress-color: var(--pg-color-accent);
+    --pg-waveform-cursor-color: var(--pg-color-text);
+    --pg-waveform-marker-color: #6ba1ff;
+    --pg-waveform-marker-active-color: #e08363;
+  }
+}

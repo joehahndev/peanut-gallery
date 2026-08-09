@@ -1,0 +1,36 @@
+{#
+/**
+ * @file
+ * Compact teaser for a Recording node: title + a small waveform player,
+ * no comment list. See node--recording.html.twig for the pg_waveform
+ * variable contract.
+ */
+#}
+{%
+  set classes = [
+    'node',
+    'node--type-' ~ node.bundle|clean_class,
+    'node--view-mode-teaser',
+    not node.isPublished() ? 'node--unpublished',
+  ]
+%}
+<article{{ attributes.addClass(classes) }}>
+
+  {{ title_prefix }}
+  <h2{{ title_attributes }}>
+    <a href="{{ url }}" rel="bookmark">{{ label }}</a>
+  </h2>
+  {{ title_suffix }}
+
+  {% if pg_waveform %}
+    <div
+      id="{{ pg_waveform.player_id }}"
+      class="pg-waveform pg-waveform--teaser"
+      data-player-id="{{ pg_waveform.player_id }}"
+      data-node-id="{{ node.id }}"
+      data-audio-url="{{ pg_waveform.audio_url }}"
+      data-loading-text="{{ 'Loading waveform…'|t }}"
+    ></div>
+  {% endif %}
+
+</article>

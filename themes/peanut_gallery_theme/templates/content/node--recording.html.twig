@@ -1,0 +1,59 @@
+{#
+/**
+ * @file
+ * Theme override for a Recording node: waveform player + comment field.
+ *
+ * In addition to the standard node.html.twig variables, this template
+ * expects `pg_waveform` (set by peanut_gallery_preprocess_node()):
+ * - pg_waveform.player_id: unique id for this page's player instance.
+ * - pg_waveform.audio_url: URL to the recording's audio (routes through
+ *   hook_file_download() for private recordings).
+ * - pg_waveform.anonymous_comments_allowed: bool, informational only.
+ *
+ * The container below is intentionally empty markup — wavesurfer.js
+ * renders its waveform into it at runtime. Without JavaScript it stays
+ * empty and the <noscript> message explains why; the comment list and
+ * form below still work normally either way.
+ */
+#}
+{%
+  set classes = [
+    'node',
+    'node--type-' ~ node.bundle|clean_class,
+    node.isPromoted() ? 'node--promoted',
+    node.isSticky() ? 'node--sticky',
+    not node.isPublished() ? 'node--unpublished',
+    view_mode ? 'node--view-mode-' ~ view_mode|clean_class,
+  ]
+%}
+<article{{ attributes.addClass(classes) }}>
+
+  {{ title_prefix }}
+  <h1{{ title_attributes }}>{{ label }}</h1>
+  {{ title_suffix }}
+
+  {% if display_submitted %}
+    <div class="pg-recording__meta">
+      {% trans %}Uploaded by {{ author_name }} on {{ date }}{% endtrans %}
+    </div>
+  {% endif %}
+
+  {% if pg_waveform %}
+    <div
+      id="{{ pg_waveform.player_id }}"
+      class="pg-waveform"
+      data-player-id="{{ pg_waveform.player_id }}"
+      data-node-id="{{ node.id }}"
+      data-audio-url="{{ pg_waveform.audio_url }}"
+      data-loading-text="{{ 'Loading waveform…'|t }}"
+    ></div>
+    <noscript>
+      <p class="pg-waveform-noscript">{{ 'Enable JavaScript to see and use the waveform player. You can still read and post comments below.'|t }}</p>
+    </noscript>
+  {% endif %}
+
+  <div{{ content_attributes.addClass('node__content') }}>
+    {{ content }}
+  </div>
+
+</article>

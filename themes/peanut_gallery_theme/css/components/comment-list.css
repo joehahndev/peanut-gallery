@@ -1,0 +1,28 @@
+/**
+ * Styling for the timestamped comment list rendered below the waveform.
+ */
+
+.comment--recording-comment {
+  border-bottom: 1px solid var(--pg-color-border);
+  padding-block: var(--pg-space-3);
+  transition: background-color 0.3s ease;
+}
+
+.comment--recording-comment:last-child {
+  border-bottom: none;
+}
+
+.pg-comment--highlighted {
+  background-color: color-mix(in srgb, var(--pg-color-accent) 15%, transparent);
+}
+
+.pg-comment-timestamp {
+  display: inline-block;
+  font-family: var(--pg-font-mono);
+  font-size: 0.8125rem;
+  color: var(--pg-color-bg);
+  background: var(--pg-color-accent);
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  margin-bottom: var(--pg-space-1);
+}
