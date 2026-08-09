@@ -7,9 +7,11 @@ namespace Drupal\peanut_gallery\Access;
 use Drupal\node\NodeInterface;
 
 /**
- * Answers "who is permitted to view this recording?" — the single source of
- * truth that RecordingGrantsBuilder, hook_file_download(), and the comment
- * access hooks all ultimately defer to.
+ * Answers "who is permitted to view this recording?".
+ *
+ * The single source of truth that RecordingGrantsBuilder,
+ * hook_file_download(), and the comment access hooks all ultimately defer
+ * to.
  */
 class RecordingAccessChecker {
 
@@ -23,8 +25,9 @@ class RecordingAccessChecker {
   }
 
   /**
-   * The uids explicitly permitted to view a private recording: the owner
-   * plus everyone listed in field_shared_with.
+   * The uids explicitly permitted to view a private recording.
+   *
+   * That's the owner plus everyone listed in field_shared_with.
    *
    * @return int[]
    *   Deduplicated user IDs.

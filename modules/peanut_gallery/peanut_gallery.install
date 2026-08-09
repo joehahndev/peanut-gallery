@@ -8,7 +8,9 @@
 declare(strict_types=1);
 
 use Drupal\Component\Utility\Bytes;
+use Drupal\Core\StringTranslation\ByteSizeMarkup;
 use Drupal\field\Entity\FieldConfig;
+use Drupal\node\NodeAccessRebuild;
 
 /**
  * Implements hook_install().
@@ -18,7 +20,7 @@ use Drupal\field\Entity\FieldConfig;
  * grants must be rebuilt.
  */
 function peanut_gallery_install(): void {
-  node_access_needs_rebuilding(TRUE);
+  _peanut_gallery_flag_node_access_rebuild();
 }
 
 /**
@@ -28,7 +30,25 @@ function peanut_gallery_install(): void {
  * again to restore the pre-install behavior.
  */
 function peanut_gallery_uninstall(): void {
-  node_access_needs_rebuilding(TRUE);
+  _peanut_gallery_flag_node_access_rebuild();
+}
+
+/**
+ * Flags node access grants as needing a rebuild, across core versions.
+ *
+ * The old node_access_needs_rebuilding() function was deprecated in
+ * drupal:11.4.0 and is already fully removed as of this writing — replaced
+ * by the NodeAccessRebuild service. This module's core_version_requirement
+ * spans both, so support both rather than assuming either is present.
+ */
+function _peanut_gallery_flag_node_access_rebuild(): void {
+  if (class_exists(NodeAccessRebuild::class) && \Drupal::hasService(NodeAccessRebuild::class)) {
+    \Drupal::service(NodeAccessRebuild::class)->setNeedsRebuild(TRUE);
+    return;
+  }
+  if (function_exists('node_access_needs_rebuilding')) {
+    node_access_needs_rebuilding(TRUE);
+  }
 }
 
 /**
@@ -39,7 +59,7 @@ function peanut_gallery_uninstall(): void {
  * operationally, the webserver's own request-size/timeout limits) must be
  * raised to match, or long recordings will still be rejected.
  */
-function peanut_gallery_requirements($phase) {
+function peanut_gallery_requirements(string $phase): array {
   $requirements = [];
   if ($phase !== 'runtime') {
     return $requirements;
@@ -61,8 +81,8 @@ function peanut_gallery_requirements($phase) {
     $requirements['peanut_gallery_upload_limits'] = [
       'title' => t('Peanut Gallery upload limits'),
       'value' => t('PHP currently allows uploads up to @php, but the Recording audio file field allows up to @field.', [
-        '@php' => format_size($php_max_bytes),
-        '@field' => format_size($field_max_bytes),
+        '@php' => ByteSizeMarkup::create($php_max_bytes),
+        '@field' => ByteSizeMarkup::create($field_max_bytes),
       ]),
       'description' => t('Raise upload_max_filesize and post_max_size (and check your webserver\'s own request-size and timeout limits, e.g. nginx client_max_body_size/fastcgi_read_timeout) to match, or lower the field\'s "Maximum upload size".'),
       'severity' => REQUIREMENT_WARNING,

@@ -17,10 +17,10 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Serves precomputed waveform peaks so the player renders instantly instead
- * of decoding a potentially hour-long file in the browser.
+ * Serves precomputed waveform peaks so the player renders instantly.
  *
- * Peaks are generated lazily on first request and cached in Drupal's
+ * Avoids decoding a potentially hour-long file in the browser. Peaks are
+ * generated lazily on first request and cached in Drupal's
  * keyvalue store (plain DB rows) keyed by file id — which means a database
  * sync from dev to production carries already-generated peaks along with
  * it, so production hosting never needs ffmpeg installed. When it isn't
@@ -28,13 +28,13 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * frontend transparently falls back to wavesurfer.js's normal client-side
  * decoding.
  */
-class PeaksController extends ControllerBase {
+final class PeaksController extends ControllerBase {
 
   public function __construct(
     protected readonly PeaksGenerator $peaksGenerator,
     protected readonly KeyValueFactoryInterface $keyValueFactory,
     protected readonly LockBackendInterface $lock,
-    protected readonly AccountInterface $currentUser,
+    protected readonly AccountInterface $account,
   ) {}
 
   /**
@@ -58,7 +58,7 @@ class PeaksController extends ControllerBase {
    * peanut_gallery_file_download()'s access posture.
    */
   public function peaks(NodeInterface $node): CacheableJsonResponse {
-    if ($node->bundle() !== 'recording' || !$node->access('view', $this->currentUser)) {
+    if ($node->bundle() !== 'recording' || !$node->access('view', $this->account)) {
       throw new NotFoundHttpException();
     }
     if (!$node->hasField('field_audio_file') || $node->get('field_audio_file')->isEmpty()) {

@@ -15,16 +15,18 @@ declare(strict_types=1);
 
 use Drupal\comment\CommentInterface;
 use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\node\NodeInterface;
 
 /**
  * Implements hook_help().
  */
-function peanut_gallery_help($route_name) {
+function peanut_gallery_help(string $route_name, RouteMatchInterface $route_match): ?string {
   if ($route_name === 'help.page.peanut_gallery') {
     return '<p>' . t('Upload long audio recordings and let visitors comment on an exact moment in the recording by clicking a waveform player.') . '</p>';
   }
@@ -34,21 +36,21 @@ function peanut_gallery_help($route_name) {
 /**
  * Implements hook_node_access_records().
  */
-function peanut_gallery_node_access_records(NodeInterface $node) {
+function peanut_gallery_node_access_records(NodeInterface $node): array {
   return \Drupal::service('peanut_gallery.grants_builder')->buildAccessRecords($node);
 }
 
 /**
  * Implements hook_node_grants().
  */
-function peanut_gallery_node_grants(AccountInterface $account, $op) {
+function peanut_gallery_node_grants(AccountInterface $account, string $op): array {
   return \Drupal::service('peanut_gallery.grants_builder')->buildGrants($account, $op);
 }
 
 /**
  * Implements hook_file_download().
  */
-function peanut_gallery_file_download($uri) {
+function peanut_gallery_file_download(string $uri): array|int|null {
   $match = \Drupal::service('peanut_gallery.file_locator')->getRecordingForUri($uri);
   if ($match === NULL) {
     // Not a Peanut Gallery file — abstain, don't interfere with other
@@ -78,7 +80,7 @@ function peanut_gallery_file_download($uri) {
  * cannot be overridden by an allowed() elsewhere even if the anonymous role
  * has been granted the site-wide "post comments" permission.
  */
-function peanut_gallery_comment_create_access(AccountInterface $account, array $context, $entity_bundle) {
+function peanut_gallery_comment_create_access(AccountInterface $account, array $context, string $entity_bundle): AccessResultInterface {
   if ($entity_bundle !== 'recording_comment' || $account->isAuthenticated()) {
     return AccessResult::neutral();
   }
@@ -103,7 +105,7 @@ function peanut_gallery_comment_create_access(AccountInterface $account, array $
  * recording's comments could leak via /comment/{id}, a Views block, or
  * JSON:API even though the recording node itself is protected.
  */
-function peanut_gallery_comment_access(EntityInterface $entity, $operation, AccountInterface $account) {
+function peanut_gallery_comment_access(EntityInterface $entity, string $operation, AccountInterface $account): AccessResultInterface {
   if ($operation !== 'view' || !$entity instanceof CommentInterface || $entity->bundle() !== 'recording_comment') {
     return AccessResult::neutral();
   }
@@ -123,7 +125,7 @@ function peanut_gallery_comment_access(EntityInterface $entity, $operation, Acco
 /**
  * Implements hook_preprocess_HOOK() for node.html.twig.
  */
-function peanut_gallery_preprocess_node(array &$variables) {
+function peanut_gallery_preprocess_node(array &$variables): void {
   /** @var \Drupal\node\NodeInterface $node */
   $node = $variables['node'];
   if ($node->bundle() !== 'recording' || !in_array($variables['view_mode'], ['full', 'teaser'], TRUE)) {
@@ -142,7 +144,7 @@ function peanut_gallery_preprocess_node(array &$variables) {
     'player_id' => 'pg-waveform-' . $node->id(),
     'audio_url' => $file->createFileUrl(FALSE),
     'anonymous_comments_allowed' => $node->hasField('field_allow_anonymous_comments')
-      && (bool) $node->get('field_allow_anonymous_comments')->value,
+    && (bool) $node->get('field_allow_anonymous_comments')->value,
   ];
   $variables['#attached']['library'][] = 'peanut_gallery/waveform_player';
   $variables['#attached']['library'][] = 'peanut_gallery/comment_timestamp';
@@ -151,7 +153,7 @@ function peanut_gallery_preprocess_node(array &$variables) {
 /**
  * Implements hook_preprocess_HOOK() for comment.html.twig.
  */
-function peanut_gallery_preprocess_comment(array &$variables) {
+function peanut_gallery_preprocess_comment(array &$variables): void {
   /** @var \Drupal\comment\CommentInterface $comment */
   $comment = $variables['comment'];
   if ($comment->bundle() !== 'recording_comment' || !$comment->hasField('field_timestamp') || $comment->get('field_timestamp')->isEmpty()) {
@@ -175,7 +177,7 @@ function _peanut_gallery_format_timestamp(float $seconds): string {
 /**
  * Implements hook_form_alter().
  */
-function peanut_gallery_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
+function peanut_gallery_form_alter(array &$form, FormStateInterface $form_state, string $form_id): void {
   if ($form_id === 'node_recording_form') {
     _peanut_gallery_alter_recording_node_form($form, $form_state);
   }

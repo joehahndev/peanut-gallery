@@ -3,6 +3,9 @@ status: true
 dependencies:
   module:
     - node
+  enforced:
+    module:
+      - peanut_gallery
 id: recording_comment
 label: 'Recording comment'
 target_entity_type_id: node

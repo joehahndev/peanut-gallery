@@ -6,6 +6,7 @@ namespace Drupal\peanut_gallery\Drush\Commands;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\KeyValueStore\KeyValueFactoryInterface;
+use Drupal\file\FileInterface;
 use Drupal\peanut_gallery\Peaks\PeaksGenerator;
 use Drush\Attributes as CLI;
 use Drush\Commands\DrushCommands;
@@ -65,7 +66,7 @@ class PeaksCommands extends DrushCommands {
     $failed = 0;
     foreach ($storage->loadMultiple($nids) as $node) {
       $file = $node->get('field_audio_file')->entity;
-      if (!$file) {
+      if (!$file instanceof FileInterface) {
         continue;
       }
       $key = 'file:' . $file->id();

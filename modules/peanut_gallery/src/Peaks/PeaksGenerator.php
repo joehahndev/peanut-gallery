@@ -22,8 +22,9 @@ use Drupal\file\FileInterface;
 class PeaksGenerator {
 
   /**
-   * Downsampled PCM sample rate used for peak extraction. Low on purpose —
-   * this is for a visual waveform, not audio quality.
+   * Downsampled PCM sample rate used for peak extraction.
+   *
+   * Low on purpose — this is for a visual waveform, not audio quality.
    */
   protected const SAMPLE_RATE = 8000;
 
@@ -93,6 +94,7 @@ class PeaksGenerator {
    * Reduces raw 16-bit mono PCM to a fixed number of min/max display peaks.
    *
    * @return array{peaks: float[], duration: float}
+   *   The downsampled peaks and the recording's duration in seconds.
    */
   protected function downsample(string $pcm): array {
     $sampleCount = intdiv(strlen($pcm), 2);

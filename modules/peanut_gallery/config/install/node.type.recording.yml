@@ -1,6 +1,9 @@
 langcode: en
 status: true
-dependencies: {  }
+dependencies:
+  enforced:
+    module:
+      - peanut_gallery
 name: Recording
 type: recording
 description: 'A long audio recording (mp3, ogg, or flac) that can be public or private, with comments pinned to a moment in the recording.'

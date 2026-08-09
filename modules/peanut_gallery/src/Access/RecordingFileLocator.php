@@ -7,7 +7,6 @@ namespace Drupal\peanut_gallery\Access;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\file\FileInterface;
 use Drupal\file\FileUsage\FileUsageInterface;
-use Drupal\node\NodeInterface;
 
 /**
  * Maps a private:// file URI back to the Recording node it belongs to.
@@ -50,7 +49,7 @@ class RecordingFileLocator {
 
     $nodeStorage = $this->entityTypeManager->getStorage('node');
     foreach ($nodeStorage->loadMultiple($nids) as $node) {
-      if (!$node instanceof NodeInterface || $node->bundle() !== 'recording' || !$node->hasField('field_audio_file')) {
+      if ($node->bundle() !== 'recording' || !$node->hasField('field_audio_file')) {
         continue;
       }
       $referenced = $node->get('field_audio_file')->entity;

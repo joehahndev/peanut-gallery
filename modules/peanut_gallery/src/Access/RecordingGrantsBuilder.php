@@ -8,10 +8,10 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\node\NodeInterface;
 
 /**
- * Builds the node_access grant records/queries behind hook_node_access_records()
- * and hook_node_grants().
+ * Builds the node_access grant records/queries for our two hooks.
  *
- * Three realms are used:
+ * Backs hook_node_access_records() and hook_node_grants(). Three realms
+ * are used:
  * - peanut_gallery_view (gid 0): the "public viewer" bucket — granted to
  *   every account (including anonymous) for public recordings, and for
  *   every node that isn't a recording at all.
@@ -40,6 +40,7 @@ class RecordingGrantsBuilder {
    * Implements the logic behind hook_node_access_records().
    *
    * @return array<int, array<string, mixed>>
+   *   The access records to write for this node.
    */
   public function buildAccessRecords(NodeInterface $node): array {
     $records = [];
@@ -66,6 +67,7 @@ class RecordingGrantsBuilder {
    * Implements the logic behind hook_node_grants().
    *
    * @return array<string, int[]>
+   *   Realm => list of gids this account should be checked against.
    */
   public function buildGrants(AccountInterface $account, string $op): array {
     $grants = [
@@ -86,13 +88,14 @@ class RecordingGrantsBuilder {
   /**
    * Builds one full-access grant record for the given realm/gid.
    *
-   * grant_update/grant_delete are always set to 1 alongside grant_view:
-   * this module never uses the grants table to restrict edit/delete, which
-   * stays governed purely by core's own "edit own/any recording content"
-   * permissions. That keeps this module unable to ever lock an editor out
-   * of, or into, unrelated content types.
+   * Both grant_update and grant_delete are always set to 1 alongside
+   * grant_view: this module never uses the grants table to restrict
+   * edit/delete, which stays governed purely by core's own "edit own/any
+   * recording content" permissions. That keeps this module unable to ever
+   * lock an editor out of, or into, unrelated content types.
    *
    * @return array<string, mixed>
+   *   A single full-access grant record.
    */
   protected function record(string $realm, int $gid): array {
     return [
