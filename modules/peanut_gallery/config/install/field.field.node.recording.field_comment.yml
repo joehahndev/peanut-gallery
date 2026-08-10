@@ -23,5 +23,7 @@ settings:
   per_page: 50
   form_location: true
   anonymous: 1
-  preview: 1
+  # 0 = DRUPAL_DISABLED. A comment here is a sentence about a moment in a
+  # mix; a preview round-trip is friction with nothing to preview.
+  preview: 0
 field_type: comment

@@ -122,15 +122,22 @@ final class RecordingConfigInstallTest extends KernelTestBase {
   }
 
   /**
-   * Field_timestamp on the comment bundle is a required decimal(10,3).
+   * Field_timestamp on the comment bundle is an optional decimal(10,3).
+   *
+   * Optional is load-bearing, not incidental. The widget is visually
+   * hidden — the timestamp is meant to be set by clicking the waveform —
+   * so a required field means the browser refuses to submit while pointing
+   * at a control nobody can see, and the form dies silently with no
+   * message. It also contradicts the Clear button the comment JS renders,
+   * which exists precisely to empty the field again.
    */
-  public function testFieldTimestampIsRequiredDecimalWithPrecisionAndScale(): void {
+  public function testFieldTimestampIsOptionalDecimalWithPrecisionAndScale(): void {
     $field = FieldConfig::loadByName('comment', 'recording_comment', 'field_timestamp');
     $storage = FieldStorageConfig::loadByName('comment', 'field_timestamp');
 
     $this->assertNotNull($field);
     $this->assertSame('decimal', $field->getType());
-    $this->assertTrue($field->isRequired());
+    $this->assertFalse($field->isRequired(), 'A hidden required field would block submission with an invisible validation error.');
 
     $this->assertNotNull($storage);
     $this->assertSame(10, $storage->getSetting('precision'));

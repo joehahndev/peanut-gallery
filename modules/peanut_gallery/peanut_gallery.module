@@ -355,6 +355,18 @@ function _peanut_gallery_alter_recording_comment_form(array &$form, FormStateInt
     }
   }
 
+  // Strip the text-format chrome from the comment body. The format select
+  // and its "No HTML tags allowed…" guidelines are noise on a form whose
+  // whole job is one sentence about a moment in a recording.
+  //
+  // The callback goes on widget[0], which is the text_format element
+  // itself — widget[0]['value'] is only its textarea child, and
+  // filter_process_format() builds the 'format' wrapper as a sibling of
+  // that, not inside it.
+  if (($form['comment_body']['widget'][0]['#type'] ?? NULL) === 'text_format') {
+    $form['comment_body']['widget'][0]['#after_build'][] = '_peanut_gallery_hide_text_format_chrome';
+  }
+
   if (!isset($form['field_timestamp']['widget'][0]['value'])) {
     return;
   }
@@ -373,6 +385,27 @@ function _peanut_gallery_alter_recording_comment_form(array &$form, FormStateInt
       $widget['#default_value'] = $seconds;
     }
   }
+}
+
+/**
+ * Form #after_build callback: hides the text format selector and its tips.
+ *
+ * The 'format' child only exists after filter_process_format() has run, so
+ * this cannot be done in hook_form_alter() — hence #after_build.
+ *
+ * Hiding the wrapper rather than just the guidelines removes the select,
+ * the "No HTML tags allowed…" list and the "About text formats" link
+ * together. Marking it inaccessible (rather than unsetting it) is the
+ * deliberate choice: Form API supplies the default value for inaccessible
+ * elements and ignores user input for them, so the body still saves with
+ * the field's configured format and a crafted POST cannot swap in a more
+ * permissive one.
+ */
+function _peanut_gallery_hide_text_format_chrome(array $element, FormStateInterface $form_state): array {
+  if (isset($element['format'])) {
+    $element['format']['#access'] = FALSE;
+  }
+  return $element;
 }
 
 /**

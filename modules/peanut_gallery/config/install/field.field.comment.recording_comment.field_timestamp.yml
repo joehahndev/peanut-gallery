@@ -12,7 +12,7 @@ entity_type: comment
 bundle: recording_comment
 label: 'Timestamp (seconds)'
 description: 'The moment in the recording this comment refers to, in seconds. Filled in automatically when you click the waveform above.'
-required: true
+required: false
 translatable: false
 default_value: {  }
 default_value_callback: ''

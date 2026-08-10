@@ -100,6 +100,44 @@ function peanut_gallery_update_10001(): void {
 }
 
 /**
+ * Turns off the comment preview button on existing sites.
+ *
+ * Shipped config/install only seeds a fresh install, so a site that already
+ * has the field keeps whatever it was installed with. A recording comment
+ * is one sentence about a moment in a mix — there is nothing worth
+ * previewing, and the extra round-trip is pure friction.
+ */
+function peanut_gallery_update_10002(): void {
+  $config = \Drupal::configFactory()->getEditable('field.field.node.recording.field_comment');
+  if ($config->isNew()) {
+    return;
+  }
+  // 0 = DRUPAL_DISABLED.
+  $config->set('settings.preview', 0)->save();
+}
+
+/**
+ * Makes the comment timestamp optional (bug fix).
+ *
+ * The field shipped as required while its widget is visually hidden, on
+ * the assumption that people would always set it by clicking the waveform.
+ * When they did not, the browser blocked submission over an invisible
+ * control: the comment form simply did nothing, with no message and
+ * nothing to click. It also contradicted the Clear button the comment JS
+ * renders. A comment with no timestamp is a perfectly reasonable thing to
+ * leave on a recording, and everything downstream already handles one —
+ * peanut_gallery_preprocess_comment() skips empty values, so no badge and
+ * no waveform marker are drawn.
+ */
+function peanut_gallery_update_10003(): void {
+  $config = \Drupal::configFactory()->getEditable('field.field.comment.recording_comment.field_timestamp');
+  if ($config->isNew()) {
+    return;
+  }
+  $config->set('required', FALSE)->save();
+}
+
+/**
  * Implements hook_requirements().
  *
  * Raising the Recording audio field's own "maximum upload size" setting is
