@@ -12,10 +12,6 @@
   margin-inline: auto;
 }
 
-.node--type-recording.node--view-mode-full .node__title {
-  margin-bottom: var(--pg-space-1);
-}
-
 .pg-recording__meta {
   color: var(--pg-color-text-muted);
   font-size: 0.875rem;

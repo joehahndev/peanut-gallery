@@ -32,8 +32,16 @@
 %}
 <article{{ attributes.addClass(classes) }}>
 
+  {# On a full node page the page-title block already renders the title, so
+     printing it here too would produce two identical headings. Same
+     condition the theme's own node.html.twig uses. title_prefix/suffix stay
+     unconditional — modules hang contextual links off them. #}
   {{ title_prefix }}
-  <h1{{ title_attributes }}>{{ label }}</h1>
+  {% if label and view_mode != 'full' %}
+    <h2{{ title_attributes }}>
+      <a href="{{ url }}" rel="bookmark">{{ label }}</a>
+    </h2>
+  {% endif %}
   {{ title_suffix }}
 
   {% if display_submitted %}
