@@ -133,4 +133,35 @@ final class RecordingCommentFormFunctionalTest extends BrowserTestBase {
     $this->assertEquals(42.5, (float) $comment->get('field_timestamp')->value);
   }
 
+  /**
+   * A comment with no timestamp is refused, visibly, and is not saved.
+   *
+   * Both halves matter. The timestamp is enforced server-side rather than
+   * by marking the field required, because the widget is visually hidden
+   * and HTML5 `required` on a hidden control makes the browser refuse to
+   * submit while pointing at something nobody can see — the form dies with
+   * no message at all. This asserts the error is actually in the page, not
+   * merely that the comment failed to save.
+   */
+  public function testCommentWithoutTimestampIsRefusedVisibly(): void {
+    $node = $this->createRecordingNode([
+      'field_visibility' => TRUE,
+      'field_allow_anonymous_comments' => TRUE,
+    ]);
+
+    $this->drupalGet($node->toUrl());
+    $this->submitForm([
+      'comment_body[0][value]' => 'A thought about nothing in particular.',
+      'field_timestamp[0][value]' => '',
+    ], 'Save');
+
+    $this->assertSession()->pageTextContains('Choose the moment this comment is about');
+
+    $comments = \Drupal::entityTypeManager()->getStorage('comment')->loadByProperties([
+      'entity_id' => $node->id(),
+      'entity_type' => 'node',
+    ]);
+    $this->assertCount(0, $comments, 'No comment is stored when the moment is missing.');
+  }
+
 }

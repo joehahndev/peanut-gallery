@@ -751,6 +751,16 @@ function _peanut_gallery_alter_recording_comment_form(array &$form, FormStateInt
   $widget = &$form['field_timestamp']['widget'][0]['value'];
   $widget['#description'] = t('Click the waveform above to set this automatically, or enter the number of seconds into the recording manually.');
 
+  // Enforce a timestamp here rather than by marking the field required.
+  //
+  // The widget is visually hidden, and a hidden field carrying HTML5
+  // `required` makes the browser silently refuse to submit while pointing
+  // at a control nobody can see: the form just dies with no message and
+  // nothing to click. That exact bug is why the field was made optional in
+  // the first place. Validating server-side instead produces a real error
+  // message in the page, and the AJAX handler renders it.
+  $widget['#element_validate'][] = '_peanut_gallery_validate_timestamp_present';
+
   // Progressive-enhancement fallback for JS-disabled clients following a
   // "seek to this point and comment" link built as ?t=123.4.
   $request = \Drupal::request();
@@ -759,6 +769,28 @@ function _peanut_gallery_alter_recording_comment_form(array &$form, FormStateInt
     if ($seconds >= 0) {
       $widget['#default_value'] = $seconds;
     }
+  }
+}
+
+/**
+ * Form #element_validate callback: a comment must name a moment.
+ *
+ * A comment with no timestamp is unmoored from the recording it is about,
+ * which is most of the point of this site — and in practice people were
+ * posting them without realising, then finding the comment had no time
+ * against it afterwards.
+ *
+ * The message says how to fix it, because the control that sets this value
+ * is the waveform, not the (hidden) number field the error is attached to.
+ */
+function _peanut_gallery_validate_timestamp_present(array &$element, FormStateInterface $form_state): void {
+  $value = $element['#value'] ?? '';
+
+  if ($value === '') {
+    $form_state->setError(
+      $element,
+      t('Choose the moment this comment is about: press play, or click the waveform above, then write your comment.'),
+    );
   }
 }
 
@@ -835,6 +867,10 @@ function _peanut_gallery_comment_ajax_callback(array &$form, FormStateInterface 
   // Clear the form for the next comment. Rebuilding the entity form would
   // also work but costs a round trip through form storage; this leaves the
   // player, and the visitor's place in it, entirely untouched.
+  // Clear any error left over from an earlier rejected attempt, which
+  // would otherwise sit on screen contradicting the comment that just
+  // appeared above it.
+  $response->addCommand(new InvokeCommand('#pg-comment-form-wrapper .messages--error', 'remove'));
   $response->addCommand(new InvokeCommand('#pg-comment-form-wrapper textarea', 'val', ['']));
   $response->addCommand(new InvokeCommand('#pg-comment-form-wrapper input[name$="[value]"]', 'val', ['']));
   $response->addCommand(new CommentPostedCommand());
