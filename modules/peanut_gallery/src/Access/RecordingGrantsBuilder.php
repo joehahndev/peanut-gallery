@@ -45,10 +45,11 @@ class RecordingGrantsBuilder {
   public function buildAccessRecords(NodeInterface $node): array {
     $records = [];
 
-    // Bypass holders can always view/update/delete, on every node — not
-    // just recordings — so a scoped "trusted" role can be granted this
-    // without needing the much broader core "bypass content access
-    // control" permission.
+    // Bypass holders can always *view* any node — not just recordings — so
+    // a scoped "trusted" role can be granted this without needing the much
+    // broader core "bypass content access control" permission. It grants no
+    // edit or delete rights; see record() for why grants must never carry
+    // those.
     $records[] = $this->record('peanut_gallery_bypass', 1);
 
     if ($node->bundle() !== 'recording' || $this->accessChecker->isPublic($node)) {
@@ -86,24 +87,37 @@ class RecordingGrantsBuilder {
   }
 
   /**
-   * Builds one full-access grant record for the given realm/gid.
+   * Builds one view-only grant record for the given realm/gid.
    *
-   * Both grant_update and grant_delete are always set to 1 alongside
-   * grant_view: this module never uses the grants table to restrict
-   * edit/delete, which stays governed purely by core's own "edit own/any
-   * recording content" permissions. That keeps this module unable to ever
-   * lock an editor out of, or into, unrelated content types.
+   * Both grant_update and grant_delete MUST stay 0, and that is a security
+   * requirement rather than a style choice. Node access grants are an
+   * *allow* layer: when a row matches, NodeGrantDatabaseStorage::access()
+   * returns an allowed result, which the entity access handler ORs into
+   * the final decision. Grants never filter, and never AND with the node
+   * permissions.
+   *
+   * So setting grant_update/grant_delete to 1 on the 'peanut_gallery_view'
+   * realm — held by gid 0, meaning everyone, anonymous included — hands
+   * every visitor edit and delete rights over every public recording, no
+   * matter what the role permissions say. An earlier version of this file
+   * did exactly that, on the mistaken assumption that core's "delete any
+   * recording content" permission still had to agree.
+   *
+   * With both at 0 the grants system stays neutral on update/delete, and
+   * those operations are decided purely by core's node permissions through
+   * node's own hook_node_access() — the behaviour this module always
+   * intended and documented.
    *
    * @return array<string, mixed>
-   *   A single full-access grant record.
+   *   A single view-only grant record.
    */
   protected function record(string $realm, int $gid): array {
     return [
       'realm' => $realm,
       'gid' => $gid,
       'grant_view' => 1,
-      'grant_update' => 1,
-      'grant_delete' => 1,
+      'grant_update' => 0,
+      'grant_delete' => 0,
       'priority' => 0,
     ];
   }

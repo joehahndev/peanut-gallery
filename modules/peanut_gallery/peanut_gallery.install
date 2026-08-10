@@ -80,6 +80,26 @@ function _peanut_gallery_rebuild_node_access(bool $immediately): void {
 }
 
 /**
+ * Rewrites node access grants to be view-only (security fix).
+ *
+ * Until now every grant record this module wrote carried grant_update and
+ * grant_delete set to 1, including the 'peanut_gallery_view' realm that is
+ * granted to gid 0 — everyone, anonymous included. Because node grants are
+ * an allow layer rather than a filter over permissions, that gave every
+ * visitor edit and delete rights on every public recording.
+ *
+ * RecordingGrantsBuilder now writes view-only records, but the rows already
+ * in {node_access} were written by the old code and are still live, so an
+ * existing site stays vulnerable until they are rewritten. Hence a real,
+ * synchronous rebuild here rather than merely flagging one: leaving the bad
+ * rows in place pending an admin noticing the "rebuild permissions" prompt
+ * is not an acceptable window for this particular bug.
+ */
+function peanut_gallery_update_10001(): void {
+  _peanut_gallery_rebuild_node_access(TRUE);
+}
+
+/**
  * Implements hook_requirements().
  *
  * Raising the Recording audio field's own "maximum upload size" setting is

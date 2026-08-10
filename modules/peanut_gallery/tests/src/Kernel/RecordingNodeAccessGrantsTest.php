@@ -176,4 +176,69 @@ final class RecordingNodeAccessGrantsTest extends KernelTestBase {
     $this->assertTrue((bool) $node->access('view', $stranger));
   }
 
+  /**
+   * Grants never hand out edit/delete, on public or private recordings.
+   *
+   * Regression test for a real privilege escalation: every grant record
+   * used to carry grant_update/grant_delete = 1, including the realm held
+   * by gid 0 (everyone). Because node grants are an allow layer rather
+   * than a filter over permissions, that let any anonymous visitor edit
+   * and delete every public recording.
+   */
+  public function testGrantsNeverConferEditOrDelete(): void {
+    $owner = $this->createUser();
+    $public = $this->createRecordingNode([
+      'uid' => $owner->id(),
+      'field_visibility' => TRUE,
+    ]);
+    $private = $this->createRecordingNode([
+      'uid' => $owner->id(),
+      'field_visibility' => FALSE,
+    ]);
+
+    $anonymous = new AnonymousUserSession();
+    $this->assertTrue((bool) $public->access('view', $anonymous), 'Sanity: anonymous can still view a public recording.');
+
+    foreach (['update', 'delete'] as $operation) {
+      $this->assertFalse(
+        (bool) $public->access($operation, $anonymous),
+        sprintf('Anonymous cannot %s a public recording.', $operation)
+      );
+      $this->assertFalse(
+        (bool) $private->access($operation, $anonymous),
+        sprintf('Anonymous cannot %s a private recording.', $operation)
+      );
+    }
+
+    // The bypass permission is about seeing private recordings, not about
+    // editing them — it must not become a backdoor to site-wide delete.
+    $bypasser = $this->createUser(['access content', 'bypass peanut gallery private recording access']);
+    $this->assertTrue((bool) $private->access('view', $bypasser), 'Sanity: the bypass permission still grants view.');
+    $this->assertFalse((bool) $private->access('delete', $bypasser), 'The bypass permission confers no delete right.');
+  }
+
+  /**
+   * Core's node permissions still govern edit/delete after the grants fix.
+   *
+   * The counterpart to testGrantsNeverConferEditOrDelete(): zeroing
+   * grant_update/grant_delete must not lock legitimate editors out, since
+   * those operations now rest entirely on core's node permissions.
+   */
+  public function testNodePermissionsStillGovernEditAndDelete(): void {
+    $owner = $this->createUser();
+    $node = $this->createRecordingNode([
+      'uid' => $owner->id(),
+      'field_visibility' => TRUE,
+    ]);
+
+    $editor = $this->createUser([
+      'access content',
+      'edit any recording content',
+      'delete any recording content',
+    ]);
+
+    $this->assertTrue((bool) $node->access('update', $editor), 'A user with "edit any recording content" can still edit.');
+    $this->assertTrue((bool) $node->access('delete', $editor), 'A user with "delete any recording content" can still delete.');
+  }
+
 }
