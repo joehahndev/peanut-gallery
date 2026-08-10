@@ -52,5 +52,12 @@
     {{ title_suffix }}
   {% endif %}
 
-  {{ comments }}
+  {# A stable container so a posted comment can be inserted at the top
+     without reloading the page — reloading would restart an hours-long
+     recording from zero and re-buffer it. Comments render newest-first
+     (see peanut_gallery_preprocess_field__comment), so prepending here is
+     the correct position. #}
+  <div class="pg-comment-list" data-pg-comment-list>
+    {{ comments }}
+  </div>
 </section>

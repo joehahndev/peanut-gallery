@@ -57,3 +57,8 @@ services:
     arguments:
       - '@database'
       - '@datetime.time'
+
+  peanut_gallery.xsendfile_subscriber:
+    class: Drupal\peanut_gallery\EventSubscriber\XSendfileSubscriber
+    tags:
+      - { name: event_subscriber }

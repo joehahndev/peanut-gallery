@@ -29,13 +29,58 @@
    */
   const players = [];
 
+  /**
+   * Marker regions by player id, so comments added later can be pinned.
+   *
+   * @type {Object<string, object>}
+   */
+  const markerLayers = {};
+
   Drupal.behaviors.peanutGalleryWaveformPlayer = {
     attach(context) {
       once('pg-waveform', '.pg-waveform', context).forEach((container) => {
         initPlayer(container);
       });
+
+      // Runs for AJAX-inserted content too, which is how a comment posted
+      // without a page reload gets its marker: the player is already
+      // running and must not be touched, so only the new comment element
+      // is processed.
+      once('pg-marker', '[data-comment-id][data-timestamp]', context).forEach((el) => {
+        addMarkerFor(el);
+      });
     },
   };
+
+  /**
+   * Adds a waveform marker for one comment element.
+   *
+   * @param {HTMLElement} el
+   *   A comment carrying data-comment-id and data-timestamp.
+   */
+  function addMarkerFor(el) {
+    const timestamp = parseFloat(el.dataset.timestamp);
+    if (Number.isNaN(timestamp)) {
+      return;
+    }
+
+    // With one recording per page there is a single player; find whichever
+    // marker layer is ready. A comment can arrive before 'ready' fires, in
+    // which case initPlayer's own pass picks it up instead.
+    const layer = Object.values(markerLayers)[0];
+    if (!layer) {
+      return;
+    }
+
+    layer.regions.addRegion({
+      id: `pg-marker-${el.dataset.commentId}`,
+      start: timestamp,
+      end: timestamp,
+      drag: false,
+      resize: false,
+      color: layer.color,
+    });
+  }
 
   /**
    * @param {HTMLElement} container
@@ -86,6 +131,10 @@
     if (toggleEl) {
       wireToggle(player, toggleEl);
     }
+
+    // Published so comments posted later (via AJAX, without a reload) can
+    // add their own marker without re-initialising anything.
+    markerLayers[container.dataset.playerId] = { regions, color: markerColor };
 
     player.on('ready', () => {
       findCommentEls(container).forEach(({ el, id, timestamp }) => {

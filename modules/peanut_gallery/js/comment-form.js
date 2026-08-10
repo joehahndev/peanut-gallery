@@ -12,6 +12,17 @@
  */
 
 ((Drupal, once) => {
+  /**
+   * Receives CommentPostedCommand and re-broadcasts it as a real event.
+   *
+   * Drupal's own AJAX commands go through jQuery; this module's JS does
+   * not use jQuery, so the signal is converted once here rather than
+   * pulling jQuery into every listener.
+   */
+  Drupal.AjaxCommands.prototype.peanutGalleryCommentPosted = function peanutGalleryCommentPosted() {
+    document.dispatchEvent(new CustomEvent('pg:comment-posted'));
+  };
+
   Drupal.behaviors.peanutGalleryCommentTimestamp = {
     attach(context) {
       once('pg-comment-form', '.pg-timestamp-field-wrapper', context).forEach((wrapper) => {
@@ -75,6 +86,13 @@
     document.addEventListener('pg:waveform-seek', (event) => {
       setSeconds(event.detail.seconds);
       wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    // The AJAX post empties the fields but cannot reset this indicator,
+    // which is JS state — without this it would keep claiming a moment
+    // that belongs to the comment just submitted.
+    document.addEventListener('pg:comment-posted', () => {
+      setSeconds(null);
     });
 
     // Defensive second layer: re-write the field from the value this

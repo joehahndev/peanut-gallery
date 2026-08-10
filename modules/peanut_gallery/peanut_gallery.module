@@ -16,6 +16,11 @@ declare(strict_types=1);
 use Drupal\comment\CommentInterface;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\InvokeCommand;
+use Drupal\Core\Ajax\PrependCommand;
+use Drupal\Core\Ajax\ReplaceCommand;
+use Drupal\peanut_gallery\Ajax\CommentPostedCommand;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -688,6 +693,20 @@ function _peanut_gallery_alter_recording_comment_form(array &$form, FormStateInt
     $form['comment_body']['widget'][0]['#after_build'][] = '_peanut_gallery_hide_text_format_chrome';
   }
 
+  // Post without reloading the page. A reload would restart an hours-long
+  // recording from zero and pay the re-buffer again, which is a heavy
+  // price for adding one sentence. The form is wrapped so a validation
+  // failure can replace just the form, never the player above it.
+  $form['#prefix'] = '<div id="pg-comment-form-wrapper">';
+  $form['#suffix'] = '</div>';
+
+  if (isset($form['actions']['submit'])) {
+    $form['actions']['submit']['#ajax'] = [
+      'callback' => '_peanut_gallery_comment_ajax_callback',
+      'progress' => ['type' => 'throbber', 'message' => NULL],
+    ];
+  }
+
   if (!isset($form['field_timestamp']['widget'][0]['value'])) {
     return;
   }
@@ -727,6 +746,65 @@ function _peanut_gallery_hide_text_format_chrome(array $element, FormStateInterf
     $element['format']['#access'] = FALSE;
   }
   return $element;
+}
+
+/**
+ * Form #ajax callback: inserts the new comment without a page reload.
+ *
+ * Only ever touches the form and the comment list. The waveform player
+ * lives outside both, so the audio element is never replaced and playback
+ * continues through the post — which is the entire point.
+ *
+ * @return \Drupal\Core\Ajax\AjaxResponse
+ *   Commands updating the page in place.
+ */
+function _peanut_gallery_comment_ajax_callback(array &$form, FormStateInterface $form_state): AjaxResponse {
+  $response = new AjaxResponse();
+
+  // Validation failed: put the form back, errors and all, and stop. The
+  // status messages are rendered inside the replaced markup.
+  if ($form_state->hasAnyErrors()) {
+    $form['pg_messages'] = [
+      '#type' => 'status_messages',
+      '#weight' => -100,
+    ];
+    $response->addCommand(new ReplaceCommand('#pg-comment-form-wrapper', $form));
+    return $response;
+  }
+
+  $form_object = $form_state->getFormObject();
+  $comment = $form_object instanceof EntityFormInterface ? $form_object->getEntity() : NULL;
+
+  if (!$comment instanceof CommentInterface || !$comment->id()) {
+    // Saved but unreadable for some reason: fall back to a reload rather
+    // than silently doing nothing.
+    $response->addCommand(new InvokeCommand('', 'pgReloadPage'));
+    return $response;
+  }
+
+  // An unpublished comment is awaiting approval; showing it as though it
+  // posted would be a lie, so say what actually happened instead.
+  if (!$comment->isPublished()) {
+    $response->addCommand(new PrependCommand('#pg-comment-form-wrapper', [
+      '#theme' => 'status_messages',
+      '#message_list' => ['status' => [t('Your comment has been queued for review.')]],
+    ]));
+  }
+  else {
+    $rendered = \Drupal::entityTypeManager()
+      ->getViewBuilder('comment')
+      ->view($comment, 'default');
+    $response->addCommand(new PrependCommand('[data-pg-comment-list]', $rendered));
+  }
+
+  // Clear the form for the next comment. Rebuilding the entity form would
+  // also work but costs a round trip through form storage; this leaves the
+  // player, and the visitor's place in it, entirely untouched.
+  $response->addCommand(new InvokeCommand('#pg-comment-form-wrapper textarea', 'val', ['']));
+  $response->addCommand(new InvokeCommand('#pg-comment-form-wrapper input[name$="[value]"]', 'val', ['']));
+  $response->addCommand(new CommentPostedCommand());
+
+  return $response;
 }
 
 /**
