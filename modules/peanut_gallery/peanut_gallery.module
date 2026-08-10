@@ -21,6 +21,7 @@ use Drupal\Core\Ajax\InvokeCommand;
 use Drupal\Core\Ajax\PrependCommand;
 use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\peanut_gallery\Ajax\CommentPostedCommand;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -570,11 +571,45 @@ function peanut_gallery_preprocess_field__comment(array &$variables): void {
   $comments = $variables['comments'];
   $pager = $comments['pager'] ?? NULL;
   unset($comments['pager']);
-  $comments = array_reverse($comments, TRUE);
+
+  // Drop comments this visitor is not allowed to read.
+  //
+  // This is not belt-and-braces, it is the only thing enforcing isolation
+  // on the page people actually read comments on. Core's
+  // CommentDefaultFormatter builds the thread with viewMultiple(), which
+  // renders whatever it is handed without consulting entity access — so
+  // hook_comment_access() alone protects the /comment/{id} permalink and
+  // JSON:API while the inline list happily printed every comment.
+  $comments = array_filter(
+    $comments,
+    static function ($element): bool {
+      $comment = $element['#comment'] ?? NULL;
+      return !$comment instanceof CommentInterface || $comment->access('view');
+    },
+  );
+
   if ($pager !== NULL) {
     $comments['pager'] = $pager;
   }
-  $variables['comments'] = $comments;
+
+  $variables['comments'] = array_reverse($comments, TRUE);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_view_alter() for node entities.
+ *
+ * Makes the comment field's render cache vary per user. The filtering in
+ * peanut_gallery_preprocess_field__comment() decides what an individual
+ * may read, so without this the first visitor to warm the cache would have
+ * their filtered list handed to everyone after them — which on an isolated
+ * recording means showing one listener another's comments.
+ */
+function peanut_gallery_node_view_alter(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display): void {
+  if ($entity->bundle() !== 'recording' || !isset($build['field_comment'])) {
+    return;
+  }
+
+  $build['field_comment']['#cache']['contexts'][] = 'user';
 }
 
 /**
