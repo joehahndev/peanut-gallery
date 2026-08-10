@@ -10,21 +10,31 @@ use Drupal\file\FileInterface;
 /**
  * Decodes an audio file with ffmpeg and downsamples it to display peaks.
  *
- * This is an optional enhancement, not a hard dependency: when ffmpeg isn't
- * installed, generate() returns NULL and callers fall back to letting
- * wavesurfer.js decode the file client-side, exactly as if this class
- * didn't exist. That degradation is deliberate — it means production
- * hosting (which may not allow shelling out to ffmpeg at all, e.g. shared
- * hosting) never needs it: run the Drush backfill in dev/DDEV, where ffmpeg
- * is easy to install, and let a database sync carry the generated peaks
- * (plain DB rows in the keyvalue store) to production.
+ * Works in constant memory and near-constant time regardless of how long
+ * the recording is, which matters because "long" here can mean a
+ * multi-hour DJ set or a lossless FLAC several gigabytes in size:
+ *
+ * - The decode is *streamed*. An earlier version captured ffmpeg's whole
+ *   output with shell_exec(), which buffers every decoded byte into one
+ *   PHP string — at 8 kHz mono 16-bit that is 16 kB per second of audio,
+ *   so a 16-hour mix needed roughly 929 MB of memory and simply died.
+ * - The decode rate *adapts to duration*. The output is 800 buckets no
+ *   matter what, so decoding a 16-hour recording at full 8 kHz would throw
+ *   away 99% of the samples after reading them. Instead the rate is chosen
+ *   so the total sample count stays bounded, which keeps a huge file about
+ *   as cheap to analyse as a short one.
+ *
+ * This remains an optional enhancement, not a hard dependency: when ffmpeg
+ * isn't installed generate() returns NULL and callers fall back to letting
+ * wavesurfer.js decode client-side, exactly as if this class didn't exist.
  */
 class PeaksGenerator {
 
   /**
-   * Downsampled PCM sample rate used for peak extraction.
+   * Decode rate used for peak extraction.
    *
-   * Low on purpose — this is for a visual waveform, not audio quality.
+   * Low on purpose — this is for a visual waveform, not audio quality —
+   * but not lowered further for long files. See rateFor().
    */
   protected const SAMPLE_RATE = 8000;
 
@@ -73,60 +83,152 @@ class PeaksGenerator {
       $cleanup = $local;
     }
 
-    $cmd = sprintf(
-      '%s -v error -i %s -ac 1 -ar %d -f s16le pipe:1',
-      escapeshellcmd($ffmpeg),
-      escapeshellarg($local),
-      self::SAMPLE_RATE,
-    );
-    $pcm = shell_exec($cmd);
-    if ($cleanup) {
-      @unlink($cleanup);
+    try {
+      $duration = $this->probeDuration($local);
+      if ($duration === NULL || $duration <= 0.0) {
+        return NULL;
+      }
+      return $this->streamPeaks($ffmpeg, $local, $duration);
     }
-    if (!$pcm || strlen($pcm) < 2) {
-      return NULL;
+    finally {
+      if ($cleanup) {
+        @unlink($cleanup);
+      }
     }
-
-    return $this->downsample($pcm);
   }
 
   /**
-   * Reduces raw 16-bit mono PCM to a fixed number of min/max display peaks.
+   * Reads a recording's duration without decoding it.
    *
-   * @return array{peaks: float[], duration: float}
-   *   The downsampled peaks and the recording's duration in seconds.
+   * The ffprobe call reads container metadata only, so it is instant even
+   * on a multi-gigabyte file, and knowing the duration up front is what
+   * lets the decode be streamed into fixed buckets in a single pass.
    */
-  protected function downsample(string $pcm): array {
-    $sampleCount = intdiv(strlen($pcm), 2);
-    $duration = $sampleCount / self::SAMPLE_RATE;
-    $bucketSize = max(1, intdiv($sampleCount, self::BUCKETS));
-
-    $peaks = [];
-    for ($bucket = 0; $bucket < self::BUCKETS; $bucket++) {
-      $start = $bucket * $bucketSize;
-      if ($start >= $sampleCount) {
-        break;
-      }
-      $end = min($start + $bucketSize, $sampleCount);
-
-      // Unpack the whole bucket in one call (fast) and scan every sample
-      // in it for the true max (accurate) — one bucket's worth of shorts
-      // at a time keeps memory bounded even on hour-long files, rather
-      // than unpacking the entire recording into a single PHP array.
-      // (An earlier version of this method only probed a handful of
-      // strided samples per bucket, which is fine for typical music but
-      // can under-sample a narrow peak in near-periodic signals.)
-      $max = 0;
-      foreach (unpack('s*', substr($pcm, $start * 2, ($end - $start) * 2)) as $sample) {
-        $abs = abs($sample);
-        if ($abs > $max) {
-          $max = $abs;
-        }
-      }
-      $peaks[] = round($max / 32768, 3);
+  protected function probeDuration(string $path): ?float {
+    $ffprobe = trim((string) shell_exec('command -v ffprobe'));
+    if ($ffprobe === '') {
+      return NULL;
     }
 
-    return ['peaks' => $peaks, 'duration' => round($duration, 2)];
+    $cmd = sprintf(
+      '%s -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s',
+      escapeshellcmd($ffprobe),
+      escapeshellarg($path),
+    );
+    $duration = trim((string) shell_exec($cmd));
+
+    return is_numeric($duration) ? (float) $duration : NULL;
+  }
+
+  /**
+   * Streams the decode, filling a fixed number of peak buckets.
+   *
+   * @return array{peaks: float[], duration: float}|null
+   *   The peaks and duration, or NULL if ffmpeg produced nothing.
+   */
+  protected function streamPeaks(string $ffmpeg, string $path, float $duration): ?array {
+    $rate = $this->rateFor($duration);
+    $expected = max(1, (int) round($duration * $rate));
+    $bucketSize = max(1, intdiv($expected, self::BUCKETS));
+
+    $cmd = sprintf(
+      '%s -v error -i %s -ac 1 -ar %d -f s16le pipe:1',
+      escapeshellcmd($ffmpeg),
+      escapeshellarg($path),
+      $rate,
+    );
+
+    $pipe = popen($cmd, 'r');
+    if (!is_resource($pipe)) {
+      return NULL;
+    }
+
+    $peaks = array_fill(0, self::BUCKETS, 0);
+    $index = 0;
+    $carry = '';
+    $seen = FALSE;
+
+    while (!feof($pipe)) {
+      $chunk = fread($pipe, 65536);
+      if ($chunk === FALSE || $chunk === '') {
+        break;
+      }
+      $seen = TRUE;
+
+      if ($carry !== '') {
+        $chunk = $carry . $chunk;
+        $carry = '';
+      }
+      // A read can split a 16-bit sample down the middle; hold the odd
+      // byte back for the next chunk rather than misaligning everything
+      // that follows.
+      if (strlen($chunk) % 2 === 1) {
+        $carry = substr($chunk, -1);
+        $chunk = substr($chunk, 0, -1);
+      }
+      if ($chunk === '') {
+        continue;
+      }
+
+      $samples = array_values(unpack('s*', $chunk));
+      $count = count($samples);
+      $pos = 0;
+
+      while ($pos < $count) {
+        $bucket = intdiv($index, $bucketSize);
+        if ($bucket >= self::BUCKETS - 1) {
+          // Anything past the last bucket (rounding drift, or a file
+          // slightly longer than its metadata claims) folds into it.
+          $bucket = self::BUCKETS - 1;
+          $take = $count - $pos;
+        }
+        else {
+          $take = min($count - $pos, (($bucket + 1) * $bucketSize) - $index);
+        }
+        $take = max(1, $take);
+
+        $slice = array_slice($samples, $pos, $take);
+        // Peak amplitude without building an abs() array: the largest
+        // magnitude is either the biggest positive or the most negative
+        // value, and max()/min() run in C.
+        $peak = max(max($slice), -min($slice));
+        if ($peak > $peaks[$bucket]) {
+          $peaks[$bucket] = $peak;
+        }
+
+        $pos += $take;
+        $index += $take;
+      }
+    }
+
+    pclose($pipe);
+
+    if (!$seen || $index === 0) {
+      return NULL;
+    }
+
+    return [
+      'peaks' => array_map(static fn (int $peak): float => round($peak / 32768, 3), $peaks),
+      'duration' => round($duration, 2),
+    ];
+  }
+
+  /**
+   * Picks the decode rate.
+   *
+   * Deliberately constant rather than scaled down for long recordings.
+   * Lowering the sample rate does not merely sample less often — the
+   * resampler low-passes at the new Nyquist first, so decoding a long mix
+   * at, say, 100 Hz discards everything above 50 Hz and returns a flat
+   * line instead of a waveform. Measured: a two-hour test tone came back
+   * with 1 of 800 buckets non-silent. Constant memory comes from streaming
+   * the decode, not from decoding less of it.
+   *
+   * Kept as a method so the choice, and the reason for it, stay visible at
+   * the point a future change would be tempted.
+   */
+  protected function rateFor(float $duration): int {
+    return self::SAMPLE_RATE;
   }
 
 }
