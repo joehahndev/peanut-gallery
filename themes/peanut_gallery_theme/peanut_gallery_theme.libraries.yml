@@ -14,6 +14,8 @@ base:
         weight: -10
       css/components/comment-list.css:
         weight: -10
+      css/components/recording-list.css:
+        weight: -10
       css/components/comment-form.css:
         weight: -10
       css/layout/node-recording.css:

@@ -1,0 +1,48 @@
+/**
+ * @file
+ * The access-filtered recording listing at /recordings (see
+ * peanut_gallery's RecordingListController), rendered as a stack of
+ * teaser cards each carrying its own compact waveform.
+ */
+
+.pg-recording-list {
+  display: grid;
+  gap: var(--pg-space-4);
+  margin-block: var(--pg-space-4);
+}
+
+.pg-recording-list .node--view-mode-teaser {
+  padding: var(--pg-space-3);
+  border: var(--pg-border-width) solid var(--pg-color-border);
+  border-radius: var(--pg-radius);
+  background: var(--pg-color-surface);
+}
+
+.pg-recording-list .node--view-mode-teaser > h2 {
+  margin: 0 0 var(--pg-space-2);
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.pg-recording-list .node--view-mode-teaser > h2 a {
+  text-decoration: none;
+}
+
+.pg-recording-list .node--view-mode-teaser > h2 a:hover,
+.pg-recording-list .node--view-mode-teaser > h2 a:focus {
+  text-decoration: underline;
+}
+
+/* Teaser waveforms are previews — the real transport lives on the
+   recording's own page — so keep them short. waveform-player.js reads
+   this token when constructing the player. */
+.pg-recording-list .pg-waveform--teaser {
+  --pg-waveform-height: 56px;
+
+  padding: var(--pg-space-2);
+}
+
+.pg-recording-list__empty {
+  color: var(--pg-color-text-muted);
+  font-style: italic;
+}

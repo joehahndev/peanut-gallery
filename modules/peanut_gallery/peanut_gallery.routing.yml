@@ -1,3 +1,13 @@
+peanut_gallery.recordings:
+  path: '/recordings'
+  defaults:
+    _controller: '\Drupal\peanut_gallery\Controller\RecordingListController::page'
+    _title: 'Recordings'
+  requirements:
+    # Per-recording visibility is enforced by the entity query's
+    # accessCheck() inside the controller; this only gates the page itself.
+    _permission: 'access content'
+
 peanut_gallery.settings:
   path: '/admin/config/media/peanut-gallery'
   defaults:

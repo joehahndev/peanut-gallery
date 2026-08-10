@@ -1,13 +1,18 @@
 /**
  * Page-level layout for the Recording full view mode.
+ *
+ * Scoped to .node--view-mode-full on purpose: an unscoped
+ * .node--type-recording also matches teasers, which then inherit a
+ * reading-width cap and auto side margins meant for a standalone page and
+ * refuse to fill their slot in the /recordings listing grid.
  */
 
-.node--type-recording {
+.node--type-recording.node--view-mode-full {
   max-width: 42rem;
   margin-inline: auto;
 }
 
-.node--type-recording .node__title {
+.node--type-recording.node--view-mode-full .node__title {
   margin-bottom: var(--pg-space-1);
 }
 

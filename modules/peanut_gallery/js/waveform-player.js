@@ -45,7 +45,10 @@
       waveColor: readToken(style, '--pg-waveform-wave-color', '#999'),
       progressColor: readToken(style, '--pg-waveform-progress-color', '#555'),
       cursorColor: readToken(style, '--pg-waveform-cursor-color', '#222'),
-      height: 96,
+      // Height comes from the theme too, so a compact context (e.g. the
+      // teaser cards on the /recordings listing) can shrink the waveform
+      // without this module knowing anything about listing layouts.
+      height: parseInt(readToken(style, '--pg-waveform-height', '96'), 10) || 96,
       normalize: true,
     };
 

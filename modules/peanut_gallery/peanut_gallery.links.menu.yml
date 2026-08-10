@@ -1,6 +1,17 @@
+# Menu links here are plugin definitions discovered from this file, not
+# config entities — adding one never requires a config import, so deploying
+# this module to an existing site leaves that site's own menu and block
+# configuration untouched.
 peanut_gallery.settings:
   title: 'Peanut Gallery'
   description: 'Configure default anonymous-comment behavior for new recordings.'
   route_name: peanut_gallery.settings
   parent: system.admin_config_media
   weight: 10
+
+peanut_gallery.recordings:
+  title: 'Recordings'
+  description: 'Browse the recordings you can listen to.'
+  route_name: peanut_gallery.recordings
+  menu_name: main
+  weight: -10
