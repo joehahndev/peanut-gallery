@@ -67,6 +67,8 @@ final class RecordingCommentViewAccessTest extends KernelTestBase {
     $this->installSchema('node', ['node_access']);
     $this->installSchema('file', ['file_usage']);
     $this->installSchema('comment', ['comment_entity_statistics']);
+    // Saving a comment fires the push-queue hook, which reads this table.
+    $this->installSchema('peanut_gallery', ['peanut_gallery_push_subscription']);
     $this->installConfig(['filter', 'user', 'node', 'comment', 'peanut_gallery']);
     mkdir($this->siteDirectory . '/private', 0775);
     $this->setSetting('file_private_path', $this->siteDirectory . '/private');

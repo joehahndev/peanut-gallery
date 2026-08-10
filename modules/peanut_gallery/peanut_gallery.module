@@ -22,7 +22,9 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\StringTranslation\ByteSizeMarkup;
+use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
+use Drupal\user\Entity\User;
 
 /**
  * Implements hook_help().
@@ -164,17 +166,150 @@ function peanut_gallery_comment_access(EntityInterface $entity, string $operatio
 }
 
 /**
+ * Implements hook_page_attachments().
+ *
+ * Links the web app manifest and the iOS-specific meta tags on every page.
+ * Safari decides whether "Add to Home Screen" produces a real standalone
+ * app — the precondition for Web Push on iOS — from these, and it reads
+ * them on whatever page the visitor happens to be on.
+ */
+function peanut_gallery_page_attachments(array &$attachments): void {
+  $attachments['#attached']['html_head_link'][] = [
+    [
+      'rel' => 'manifest',
+      'href' => Url::fromRoute('peanut_gallery.manifest')->toString(),
+    ],
+  ];
+
+  // iOS ignores the manifest's icons for the Home Screen and uses this.
+  $attachments['#attached']['html_head_link'][] = [
+    [
+      'rel' => 'apple-touch-icon',
+      'href' => base_path() . \Drupal::service('extension.list.module')->getPath('peanut_gallery') . '/images/icon-192.png',
+    ],
+  ];
+
+  $attachments['#attached']['html_head'][] = [
+    [
+      '#tag' => 'meta',
+      '#attributes' => ['name' => 'apple-mobile-web-app-capable', 'content' => 'yes'],
+    ],
+    'peanut_gallery_ios_capable',
+  ];
+  $attachments['#attached']['html_head'][] = [
+    [
+      '#tag' => 'meta',
+      '#attributes' => [
+        'name' => 'apple-mobile-web-app-status-bar-style',
+        'content' => 'default',
+      ],
+    ],
+    'peanut_gallery_ios_status_bar',
+  ];
+  $attachments['#attached']['html_head'][] = [
+    [
+      '#tag' => 'meta',
+      '#attributes' => ['name' => 'theme-color', 'content' => '#c2410c'],
+    ],
+    'peanut_gallery_theme_color',
+  ];
+}
+
+/**
  * Implements hook_ENTITY_TYPE_insert() for comment entities.
  */
 function peanut_gallery_comment_insert(CommentInterface $comment): void {
-  _peanut_gallery_notify_about_comment($comment, 'posted');
+  _peanut_gallery_announce_comment($comment, 'posted');
 }
 
 /**
  * Implements hook_ENTITY_TYPE_update() for comment entities.
  */
 function peanut_gallery_comment_update(CommentInterface $comment): void {
-  _peanut_gallery_notify_about_comment($comment, 'edited');
+  _peanut_gallery_announce_comment($comment, 'edited');
+}
+
+/**
+ * Runs both notification channels without ever endangering the save.
+ *
+ * Telling people about a comment is a side effect; storing the comment is
+ * the job. A bounced SMTP connection, a push service outage, or a database
+ * table missing because the code was deployed a moment before update.php
+ * ran must not surface to the person who just pressed Save, and must not
+ * roll their comment back. So each channel is isolated and its failure is
+ * logged rather than thrown.
+ *
+ * @param \Drupal\comment\CommentInterface $comment
+ *   The comment that was saved.
+ * @param string $event
+ *   Either 'posted' or 'edited'.
+ */
+function _peanut_gallery_announce_comment(CommentInterface $comment, string $event): void {
+  foreach (['_peanut_gallery_notify_about_comment', '_peanut_gallery_queue_push_about_comment'] as $channel) {
+    try {
+      $channel($comment, $event);
+    }
+    catch (\Throwable $e) {
+      \Drupal::logger('peanut_gallery')->error('Could not announce comment @id via @channel: @message', [
+        '@id' => $comment->id(),
+        '@channel' => $channel,
+        '@message' => $e->getMessage(),
+      ]);
+    }
+  }
+}
+
+/**
+ * Queues a push notification per subscribed browser.
+ *
+ * Queued rather than sent inline: delivery is an HTTPS round-trip to
+ * Apple's, Google's or Mozilla's push service, and posting a comment should
+ * not wait on — or fail because of — any of them. Cron drains the queue.
+ *
+ * @param \Drupal\comment\CommentInterface $comment
+ *   The comment that was saved.
+ * @param string $event
+ *   Either 'posted' or 'edited'.
+ */
+function _peanut_gallery_queue_push_about_comment(CommentInterface $comment, string $event): void {
+  if ($comment->bundle() !== 'recording_comment') {
+    return;
+  }
+
+  /** @var \Drupal\peanut_gallery\Push\PushSubscriptionStore $store */
+  $store = \Drupal::service('peanut_gallery.push_subscription_store');
+  $subscriptions = $store->loadAll();
+  if (!$subscriptions) {
+    return;
+  }
+
+  $host = $comment->getCommentedEntity();
+  $recording = $host instanceof NodeInterface ? $host->label() : t('a recording');
+  $body = trim(strip_tags((string) ($comment->get('comment_body')->value ?? '')));
+
+  $payload = [
+    'title' => (string) t('Comment @event on "@recording"', [
+      '@event' => $event,
+      '@recording' => $recording,
+    ]),
+    'body' => mb_strimwidth($body, 0, 120, '…'),
+    'url' => $comment->permalink()->setAbsolute()->toString(),
+    // One notification slot per recording, so a burst of comments on the
+    // same mix replaces itself instead of stacking.
+    'tag' => 'peanut-gallery-' . ($host instanceof NodeInterface ? $host->id() : 'unknown'),
+  ];
+
+  $queue = \Drupal::queue('peanut_gallery_push');
+  foreach ($subscriptions as $subscription) {
+    // A subscriber must still be allowed to see the recording — a device
+    // subscribed while its owner had access should not keep receiving
+    // quotes from a mix they were later removed from.
+    $subscriber = User::load($subscription['uid']);
+    if (!$subscriber || !$host instanceof NodeInterface || !$host->access('view', $subscriber)) {
+      continue;
+    }
+    $queue->createItem(['subscription' => $subscription, 'payload' => $payload]);
+  }
 }
 
 /**

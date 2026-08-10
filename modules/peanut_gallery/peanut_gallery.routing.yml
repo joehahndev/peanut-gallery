@@ -8,6 +8,42 @@ peanut_gallery.recordings:
     # accessCheck() inside the controller; this only gates the page itself.
     _permission: 'access content'
 
+peanut_gallery.manifest:
+  path: '/peanut-gallery/manifest.json'
+  defaults:
+    _controller: '\Drupal\peanut_gallery\Controller\PushController::manifest'
+  requirements:
+    # The manifest describes the site, not any content; iOS fetches it
+    # before the visitor has done anything.
+    _access: 'TRUE'
+
+peanut_gallery.service_worker:
+  path: '/peanut-gallery/service-worker.js'
+  defaults:
+    _controller: '\Drupal\peanut_gallery\Controller\PushController::serviceWorker'
+  requirements:
+    _access: 'TRUE'
+
+peanut_gallery.push_subscribe:
+  path: '/peanut-gallery/push/subscribe'
+  defaults:
+    _controller: '\Drupal\peanut_gallery\Controller\PushController::subscribe'
+  methods: [POST]
+  requirements:
+    _permission: 'receive peanut gallery push notifications'
+    # Same-origin proof: without it any site could silently register its
+    # own push endpoint against a logged-in visitor of this one.
+    _csrf_request_header_token: 'TRUE'
+
+peanut_gallery.push_unsubscribe:
+  path: '/peanut-gallery/push/unsubscribe'
+  defaults:
+    _controller: '\Drupal\peanut_gallery\Controller\PushController::unsubscribe'
+  methods: [POST]
+  requirements:
+    _permission: 'receive peanut gallery push notifications'
+    _csrf_request_header_token: 'TRUE'
+
 peanut_gallery.settings:
   path: '/admin/config/media/peanut-gallery'
   defaults:

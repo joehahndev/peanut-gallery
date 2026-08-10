@@ -7,8 +7,11 @@ namespace Drupal\peanut_gallery\Form;
 use Drupal\Component\Utility\EmailValidatorInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\TypedConfigManagerInterface;
+use Drupal\Core\Access\CsrfTokenGenerator;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
+use Drupal\peanut_gallery\Push\VapidKeys;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -24,6 +27,8 @@ final class SettingsForm extends ConfigFormBase {
     ConfigFactoryInterface $config_factory,
     TypedConfigManagerInterface $typed_config_manager,
     protected EmailValidatorInterface $emailValidator,
+    protected VapidKeys $vapidKeys,
+    protected CsrfTokenGenerator $csrfToken,
   ) {
     parent::__construct($config_factory, $typed_config_manager);
   }
@@ -36,6 +41,8 @@ final class SettingsForm extends ConfigFormBase {
       $container->get('config.factory'),
       $container->get('config.typed'),
       $container->get('email.validator'),
+      $container->get('peanut_gallery.vapid_keys'),
+      $container->get('csrf_token'),
     );
   }
 
@@ -72,6 +79,36 @@ final class SettingsForm extends ConfigFormBase {
       '#description' => $this->t('One address per line. Each gets an email whenever a comment on a recording is posted or edited. Leave empty to send nothing.'),
       '#default_value' => implode("\n", $config->get('notification_emails') ?: []),
       '#rows' => 4,
+    ];
+
+    $form['push'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Push notifications'),
+      '#open' => TRUE,
+      '#description' => $this->t('Push notifications are granted per device, so this button has to be pressed on each phone or computer you want notified. On iPhone and iPad, add this site to your Home Screen and open it from there first — Safari only allows notifications for an installed site.'),
+    ];
+
+    $form['push']['toggle'] = [
+      '#type' => 'html_tag',
+      '#tag' => 'button',
+      '#value' => $this->t('Notify me on this device'),
+      '#attributes' => [
+        'type' => 'button',
+        'class' => ['button'],
+        'data-pg-push-toggle' => 'true',
+      ],
+      '#attached' => [
+        'library' => ['peanut_gallery/push_subscribe'],
+        'drupalSettings' => [
+          'peanutGallery' => [
+            'vapidPublicKey' => $this->vapidKeys->publicKey(),
+            'serviceWorkerUrl' => Url::fromRoute('peanut_gallery.service_worker')->toString(),
+            'subscribeUrl' => Url::fromRoute('peanut_gallery.push_subscribe')->toString(),
+            'unsubscribeUrl' => Url::fromRoute('peanut_gallery.push_unsubscribe')->toString(),
+            'csrfToken' => $this->csrfToken->get('rest'),
+          ],
+        ],
+      ],
     ];
 
     return parent::buildForm($form, $form_state);

@@ -14,6 +14,75 @@ use Drupal\field\Entity\FieldConfig;
 use Drupal\node\NodeAccessRebuild;
 
 /**
+ * Implements hook_schema().
+ *
+ * Push subscriptions are deliberately a plain table rather than a content
+ * entity: they are per-browser device tokens, not content. They have no
+ * revisions, no fields to configure, no translations, and nothing should
+ * ever render one. A table also makes the "delete every subscription whose
+ * endpoint the push service just rejected" cleanup a single query.
+ */
+function peanut_gallery_schema(): array {
+  $schema['peanut_gallery_push_subscription'] = [
+    'description' => 'Web Push subscriptions, one row per browser/device.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary key.',
+      ],
+      'uid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The user this browser was subscribed by.',
+      ],
+      'endpoint' => [
+        'type' => 'text',
+        'not null' => TRUE,
+        'description' => 'Push service URL to deliver to.',
+      ],
+      'endpoint_hash' => [
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'description' => 'Hash of endpoint; endpoints are too long to index directly.',
+      ],
+      'p256dh' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'Client public key for payload encryption.',
+      ],
+      'auth' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'Client auth secret for payload encryption.',
+      ],
+      'created' => [
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'When this subscription was registered.',
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      // One row per browser: re-subscribing the same browser updates rather
+      // than piling up duplicates that would each fire a notification.
+      'endpoint_hash' => ['endpoint_hash'],
+    ],
+    'indexes' => [
+      'uid' => ['uid'],
+    ],
+  ];
+
+  return $schema;
+}
+
+/**
  * Implements hook_install().
  *
  * Installing this module changes the effective node access model (see
@@ -135,6 +204,17 @@ function peanut_gallery_update_10003(): void {
     return;
   }
   $config->set('required', FALSE)->save();
+}
+
+/**
+ * Creates the push subscription table on existing sites.
+ */
+function peanut_gallery_update_10004(): void {
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('peanut_gallery_push_subscription')) {
+    $tables = peanut_gallery_schema();
+    $schema->createTable('peanut_gallery_push_subscription', $tables['peanut_gallery_push_subscription']);
+  }
 }
 
 /**

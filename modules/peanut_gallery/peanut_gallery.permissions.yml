@@ -7,3 +7,7 @@ administer peanut gallery settings:
   title: 'Administer Peanut Gallery settings'
   description: 'Change the default anonymous-comments setting applied to newly created recordings.'
   restrict access: true
+
+receive peanut gallery push notifications:
+  title: 'Receive Peanut Gallery push notifications'
+  description: 'Allow this role to subscribe a browser to push notifications about new and edited comments.'

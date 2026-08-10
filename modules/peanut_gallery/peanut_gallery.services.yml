@@ -27,3 +27,27 @@ services:
     class: Drupal\peanut_gallery\Routing\RouteSubscriber
     tags:
       - { name: event_subscriber }
+
+  peanut_gallery.push_subscription_store:
+    class: Drupal\peanut_gallery\Push\PushSubscriptionStore
+    arguments:
+      - '@database'
+      - '@datetime.time'
+
+  peanut_gallery.vapid_keys:
+    class: Drupal\peanut_gallery\Push\VapidKeys
+    arguments:
+      - '@state'
+
+  peanut_gallery.push_sender:
+    class: Drupal\peanut_gallery\Push\PushSender
+    arguments:
+      - '@peanut_gallery.vapid_keys'
+      - '@peanut_gallery.push_subscription_store'
+      - '@config.factory'
+      - '@logger.channel.peanut_gallery'
+
+  logger.channel.peanut_gallery:
+    parent: logger.channel_base
+    arguments:
+      - 'peanut_gallery'

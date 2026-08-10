@@ -42,3 +42,11 @@ comment_timestamp:
   dependencies:
     - core/drupal
     - core/once
+
+push_subscribe:
+  js:
+    js/push-subscribe.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/once
