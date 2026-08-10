@@ -106,9 +106,28 @@ abbr.ajax-changed {
 /**
  * Minimalist input/textarea/button treatment, built from tokens.css.
  */
+/**
+ * Labels sit above their field, so every input in a form starts at the
+ * same left edge. Inline labels (the browser default for <label>) push
+ * each control along by the width of its own text, which is why "Your
+ * name", "Email" and "Homepage" each began at a different place.
+ */
 .form-item label {
+  display: block;
+  margin-bottom: 0.35em;
   font-size: 0.8125rem;
   font-weight: 600;
+}
+
+/* Checkboxes and radios are the exception: their label belongs beside the
+   control, not above it. Same specificity as the rule above, so this has
+   to stay after it to win. */
+.form-item label.option,
+.form-type-checkbox label,
+.form-type-radio label {
+  display: inline;
+  margin-bottom: 0;
+  font-weight: normal;
 }
 
 input[type='text'],
