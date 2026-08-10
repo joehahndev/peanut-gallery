@@ -48,9 +48,35 @@
       // is processed.
       once('pg-marker', '[data-comment-id][data-timestamp]', context).forEach((el) => {
         addMarkerFor(el);
+        wireTimestampJump(el);
       });
     },
   };
+
+  /**
+   * Makes a comment's timestamp badge jump playback to that moment.
+   *
+   * The badge is a real button in the markup, so this only has to attach
+   * behaviour — keyboard activation and focus come free rather than being
+   * bolted onto a span.
+   *
+   * @param {HTMLElement} el
+   *   A comment carrying data-comment-id and data-timestamp.
+   */
+  function wireTimestampJump(el) {
+    const badge = el.querySelector('[data-pg-seek]');
+    if (!badge) {
+      return;
+    }
+
+    badge.addEventListener('click', () => {
+      document.dispatchEvent(
+        new CustomEvent('pg:seek-request', {
+          detail: { seconds: parseFloat(el.dataset.timestamp) },
+        }),
+      );
+    });
+  }
 
   /**
    * Adds a waveform marker for one comment element.
@@ -176,6 +202,28 @@
           detail: { seconds: newTime, playerId: container.dataset.playerId },
         }),
       );
+    });
+
+    // Publish the play position so the comment form can pin a comment to
+    // wherever the listener actually is, without them having to click the
+    // waveform first.
+    player.on('timeupdate', (currentTime) => {
+      document.dispatchEvent(
+        new CustomEvent('pg:waveform-position', {
+          detail: { seconds: currentTime, playerId: container.dataset.playerId },
+        }),
+      );
+    });
+
+    // Clicking a comment's timestamp jumps there and plays, which is the
+    // point of pinning comments to moments in the first place.
+    document.addEventListener('pg:seek-request', (event) => {
+      const seconds = event.detail.seconds;
+      if (typeof seconds !== 'number' || Number.isNaN(seconds)) {
+        return;
+      }
+      player.setTime(seconds);
+      player.play();
     });
   }
 

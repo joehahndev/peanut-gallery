@@ -31,7 +31,13 @@
 >
   <header class="pg-comment__header">
     {% if pg_timestamp_formatted %}
-      <span class="pg-comment-timestamp">{{ pg_timestamp_formatted }}</span>
+      {# A button, not a span: jumping playback to this moment is an action,
+         so it should be reachable and operable by keyboard without
+         reinventing any of that on a div. #}
+      <button type="button" class="pg-comment-timestamp" data-pg-seek
+        title="{{ 'Play from @time'|t({'@time': pg_timestamp_formatted}) }}">
+        {{- pg_timestamp_formatted -}}
+      </button>
     {% endif %}
     <span class="pg-comment__author">{{ author }}</span>
     <span class="pg-comment__date">{{ created }}</span>

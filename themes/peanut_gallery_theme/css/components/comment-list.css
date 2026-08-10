@@ -62,6 +62,8 @@
   margin: 0;
 }
 
+/* Now a <button> that jumps playback to this moment, so it needs the
+   browser's button chrome stripped and its affordance restated. */
 .pg-comment-timestamp {
   display: inline-block;
   font-family: var(--pg-font-mono);
@@ -70,8 +72,15 @@
   font-weight: 600;
   color: var(--pg-color-bg);
   background: var(--pg-color-accent);
+  border: 0;
   border-radius: 999px;
   padding: 0.0625rem 0.5rem;
+  cursor: pointer;
+}
+
+.pg-comment-timestamp:hover,
+.pg-comment-timestamp:focus-visible {
+  background: var(--pg-color-text);
 }
 
 /* The "Add new comment" heading core prints above the inline form. */
