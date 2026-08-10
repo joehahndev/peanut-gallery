@@ -164,6 +164,111 @@ function peanut_gallery_comment_access(EntityInterface $entity, string $operatio
 }
 
 /**
+ * Implements hook_ENTITY_TYPE_insert() for comment entities.
+ */
+function peanut_gallery_comment_insert(CommentInterface $comment): void {
+  _peanut_gallery_notify_about_comment($comment, 'posted');
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update() for comment entities.
+ */
+function peanut_gallery_comment_update(CommentInterface $comment): void {
+  _peanut_gallery_notify_about_comment($comment, 'edited');
+}
+
+/**
+ * Emails the configured addresses about a recording comment.
+ *
+ * Recipients are a plain site-owner setting, not per-user subscriptions:
+ * this exists so whoever runs the gallery hears about activity on their own
+ * recordings. Nothing is sent when the list is empty, which is the default.
+ *
+ * Deliberately fires for unpublished comments too — a comment held for
+ * approval is precisely the one worth being told about.
+ *
+ * @param \Drupal\comment\CommentInterface $comment
+ *   The comment that was just saved.
+ * @param string $event
+ *   Either 'posted' or 'edited'.
+ */
+function _peanut_gallery_notify_about_comment(CommentInterface $comment, string $event): void {
+  if ($comment->bundle() !== 'recording_comment') {
+    return;
+  }
+
+  $recipients = \Drupal::config('peanut_gallery.settings')->get('notification_emails') ?: [];
+  if (!$recipients) {
+    return;
+  }
+
+  $mail_manager = \Drupal::service('plugin.manager.mail');
+  $langcode = \Drupal::config('system.site')->get('langcode') ?: 'en';
+
+  foreach ($recipients as $recipient) {
+    $mail_manager->mail(
+      'peanut_gallery',
+      'comment_notification',
+      $recipient,
+      $langcode,
+      ['comment' => $comment, 'event' => $event],
+    );
+  }
+}
+
+/**
+ * Implements hook_mail().
+ */
+function peanut_gallery_mail(string $key, array &$message, array $params): void {
+  if ($key !== 'comment_notification') {
+    return;
+  }
+
+  /** @var \Drupal\comment\CommentInterface $comment */
+  $comment = $params['comment'];
+  $host = $comment->getCommentedEntity();
+  $recording = $host instanceof NodeInterface ? $host->label() : t('a recording');
+
+  $message['subject'] = t('Comment @event on "@recording"', [
+    '@event' => $params['event'],
+    '@recording' => $recording,
+  ]);
+
+  $lines = [
+    t('@author @event a comment on "@recording".', [
+      '@author' => $comment->getAuthorName() ?: t('Someone'),
+      '@event' => $params['event'],
+      '@recording' => $recording,
+    ]),
+    '',
+  ];
+
+  if ($comment->hasField('field_timestamp') && !$comment->get('field_timestamp')->isEmpty()) {
+    $lines[] = t('At @time into the recording.', [
+      '@time' => _peanut_gallery_format_timestamp((float) $comment->get('field_timestamp')->value),
+    ]);
+    $lines[] = '';
+  }
+
+  if ($comment->hasField('comment_body') && !$comment->get('comment_body')->isEmpty()) {
+    $lines[] = trim(strip_tags((string) $comment->get('comment_body')->value));
+    $lines[] = '';
+  }
+
+  if (!$comment->isPublished()) {
+    $lines[] = t('This comment is unpublished and awaiting approval.');
+    $lines[] = '';
+  }
+
+  // permalink() already points at the comment's fragment on its host page.
+  $lines[] = t('Read it here: @url', [
+    '@url' => $comment->permalink()->setAbsolute()->toString(),
+  ]);
+
+  $message['body'] = $lines;
+}
+
+/**
  * Implements hook_preprocess_HOOK() for node.html.twig.
  */
 function peanut_gallery_preprocess_node(array &$variables): void {

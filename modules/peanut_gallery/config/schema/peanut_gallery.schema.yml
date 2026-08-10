@@ -5,3 +5,9 @@ peanut_gallery.settings:
     default_allow_anonymous_comments:
       type: boolean
       label: 'Allow anonymous comments by default on new recordings'
+    notification_emails:
+      type: sequence
+      label: 'Addresses notified when a recording comment is posted or edited'
+      sequence:
+        type: email
+        label: 'Email address'
