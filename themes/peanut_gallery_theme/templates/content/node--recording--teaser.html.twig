@@ -31,6 +31,18 @@
       data-audio-url="{{ pg_waveform.audio_url }}"
       data-loading-text="{{ 'Loading waveform…'|t }}"
     ></div>
+
+    {# Same progressive-enhancement contract as the full view: hidden until
+       waveform-player.js finds it. #}
+    <div class="pg-waveform-meta pg-waveform-meta--teaser">
+      <button
+        type="button"
+        class="pg-waveform-toggle"
+        data-player-id="{{ pg_waveform.player_id }}"
+        hidden
+      >{{ 'Play'|t }}</button>
+      <span class="pg-waveform-time" data-player-id="{{ pg_waveform.player_id }}"></span>
+    </div>
   {% endif %}
 
 </article>

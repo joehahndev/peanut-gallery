@@ -51,21 +51,35 @@
   {% endif %}
 
   {% if pg_waveform %}
-    <div
-      id="{{ pg_waveform.player_id }}"
-      class="pg-waveform"
-      data-player-id="{{ pg_waveform.player_id }}"
-      data-node-id="{{ node.id }}"
-      data-audio-url="{{ pg_waveform.audio_url }}"
-      data-loading-text="{{ 'Loading waveform…'|t }}"
-    ></div>
+    {# Only the waveform breaks out to the full viewport width. The controls
+       and metadata stay in normal flow so they line up exactly with the
+       page's reading column — re-centring them inside the full-bleed
+       wrapper would inherit its scrollbar-sized offset. #}
+    <div class="pg-player">
+      <div
+        id="{{ pg_waveform.player_id }}"
+        class="pg-waveform"
+        data-player-id="{{ pg_waveform.player_id }}"
+        data-node-id="{{ node.id }}"
+        data-audio-url="{{ pg_waveform.audio_url }}"
+        data-loading-text="{{ 'Loading waveform…'|t }}"
+      ></div>
+    </div>
     <noscript>
       <p class="pg-waveform-noscript">{{ 'Enable JavaScript to see and use the waveform player. You can still read and post comments below.'|t }}</p>
     </noscript>
 
     <div class="pg-waveform-meta">
+      {# Hidden until waveform-player.js wires it up, so it is never a dead
+         control for a visitor without JavaScript. #}
+      <button
+        type="button"
+        class="pg-waveform-toggle"
+        data-player-id="{{ pg_waveform.player_id }}"
+        hidden
+      >{{ 'Play'|t }}</button>
       <span class="pg-waveform-time" data-player-id="{{ pg_waveform.player_id }}">
-        {%- if pg_waveform.duration_formatted -%}0:00 / {{ pg_waveform.duration_formatted }}{%- endif -%}
+        {%- if pg_waveform.duration_formatted -%}0:00.0 / {{ pg_waveform.duration_formatted }}{%- endif -%}
       </span>
       {% if pg_waveform.file_name %}
         <span class="pg-waveform-file-info">

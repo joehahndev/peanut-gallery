@@ -273,13 +273,21 @@ function peanut_gallery_preprocess_comment(array &$variables): void {
 }
 
 /**
- * Formats a number of seconds as a m:ss string.
+ * Formats a number of seconds as a m:ss.t string.
+ *
+ * Tenths are shown because a comment is pinned to a moment in audio, where
+ * a whole second is a long time — "the drop" and a second after it are
+ * different places in a mix. The field stores milliseconds (decimal 10,3);
+ * tenths is simply the precision worth reading on screen.
+ *
+ * Rounding happens before the minutes are split out, so a value like 59.97
+ * renders as 1:00.0 rather than 0:60.0.
  */
 function _peanut_gallery_format_timestamp(float $seconds): string {
-  $whole = max(0, (int) round($seconds));
-  $minutes = intdiv($whole, 60);
-  $remaining = $whole % 60;
-  return sprintf('%d:%02d', $minutes, $remaining);
+  $tenths = round(max(0.0, $seconds), 1);
+  $minutes = (int) floor($tenths / 60);
+  $remaining = $tenths - ($minutes * 60);
+  return sprintf('%d:%04.1f', $minutes, $remaining);
 }
 
 /**

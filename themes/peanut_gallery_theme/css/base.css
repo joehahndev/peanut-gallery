@@ -28,8 +28,18 @@ a {
   outline-offset: 2px;
 }
 
+/* Absorbs the sliver by which the full-bleed player's 100vw overshoots the
+   content area (100vw counts the scrollbar), so it cannot raise a
+   horizontal scrollbar. This has to sit on a full-width ancestor: putting
+   it on .layout-container instead would clip the very breakout it exists
+   to permit. `clip` rather than `hidden` because hidden forces overflow-y
+   to auto and makes this a scroll container, breaking position:sticky. */
+html {
+  overflow-x: clip;
+}
+
 .layout-container {
-  max-width: 42rem;
+  max-width: var(--pg-measure);
   margin-inline: auto;
   padding-inline: var(--pg-space-3);
 }

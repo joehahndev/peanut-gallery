@@ -1,5 +1,7 @@
 base:
   version: VERSION
+  js:
+    js/scrollbar-width.js: {}
   css:
     component:
       css/fonts.css:

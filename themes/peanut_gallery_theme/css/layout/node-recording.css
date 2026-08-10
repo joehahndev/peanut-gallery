@@ -8,7 +8,7 @@
  */
 
 .node--type-recording.node--view-mode-full {
-  max-width: 42rem;
+  max-width: var(--pg-measure);
   margin-inline: auto;
 }
 

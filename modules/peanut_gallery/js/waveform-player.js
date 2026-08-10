@@ -18,6 +18,17 @@
  */
 
 ((Drupal, once) => {
+  /**
+   * Every player instantiated on this page.
+   *
+   * A listing page renders one player per recording, and two recordings
+   * playing over each other is never what someone wants, so starting one
+   * pauses the rest.
+   *
+   * @type {object[]}
+   */
+  const players = [];
+
   Drupal.behaviors.peanutGalleryWaveformPlayer = {
     attach(context) {
       once('pg-waveform', '.pg-waveform', context).forEach((container) => {
@@ -69,6 +80,12 @@
     const markerColor = readToken(style, '--pg-waveform-marker-color', '#c0392b');
     const markerActiveColor = readToken(style, '--pg-waveform-marker-active-color', '#e74c3c');
     const timeEl = document.querySelector(`.pg-waveform-time[data-player-id="${container.dataset.playerId}"]`);
+    const toggleEl = document.querySelector(`.pg-waveform-toggle[data-player-id="${container.dataset.playerId}"]`);
+
+    players.push(player);
+    if (toggleEl) {
+      wireToggle(player, toggleEl);
+    }
 
     player.on('ready', () => {
       findCommentEls(container).forEach(({ el, id, timestamp }) => {
@@ -111,6 +128,47 @@
         }),
       );
     });
+  }
+
+  /**
+   * Turns the server-rendered toggle into a working play/pause control.
+   *
+   * The button ships with a `hidden` attribute so it is never a dead
+   * control without JavaScript; it is revealed here, and stays disabled
+   * until wavesurfer reports it can actually play.
+   *
+   * @param {object} player
+   *   The wavesurfer instance.
+   * @param {HTMLButtonElement} toggleEl
+   *   The button rendered next to this player.
+   */
+  function wireToggle(player, toggleEl) {
+    toggleEl.hidden = false;
+    toggleEl.disabled = true;
+
+    player.on('ready', () => {
+      toggleEl.disabled = false;
+    });
+
+    toggleEl.addEventListener('click', () => {
+      player.playPause();
+    });
+
+    const setPlaying = (playing) => {
+      toggleEl.textContent = playing ? Drupal.t('Pause') : Drupal.t('Play');
+      toggleEl.classList.toggle('is-playing', playing);
+    };
+
+    player.on('play', () => {
+      setPlaying(true);
+      players.forEach((other) => {
+        if (other !== player && other.isPlaying()) {
+          other.pause();
+        }
+      });
+    });
+    player.on('pause', () => setPlaying(false));
+    player.on('finish', () => setPlaying(false));
   }
 
   /**
@@ -185,13 +243,18 @@
   }
 
   /**
+   * Formats seconds as m:ss.t, matching _peanut_gallery_format_timestamp().
+   *
+   * The transport readout carries tenths too, so the time someone reads
+   * while positioning matches the precision a comment is pinned at.
+   *
    * @param {number} seconds
    * @return {string}
    */
   function formatTime(seconds) {
-    const whole = Math.max(0, Math.round(seconds || 0));
-    const minutes = Math.floor(whole / 60);
-    const remaining = whole % 60;
-    return `${minutes}:${String(remaining).padStart(2, '0')}`;
+    const tenths = Math.max(0, Math.round((seconds || 0) * 10) / 10);
+    const minutes = Math.floor(tenths / 60);
+    const remaining = tenths - minutes * 60;
+    return `${minutes}:${remaining.toFixed(1).padStart(4, '0')}`;
   }
 })(Drupal, once);

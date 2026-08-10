@@ -42,6 +42,11 @@
   --pg-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
   --pg-radius: 0.25rem;
   --pg-border-width: 1px;
+
+  /* Reading column width. Shared by the page wrapper, the recording page
+     layout, and the player's metadata row — the player itself deliberately
+     breaks out of it (see waveform-player.css). */
+  --pg-measure: 42rem;
 }
 
 @media (prefers-color-scheme: dark) {

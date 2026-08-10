@@ -90,13 +90,19 @@
   }
 
   /**
+   * Formats seconds as m:ss.t, matching _peanut_gallery_format_timestamp().
+   *
+   * Tenths matter here: this is the moment a comment is pinned to, and a
+   * whole second is a long time in a mix. Rounding before splitting out
+   * the minutes keeps 59.97 rendering as 1:00.0, not 0:60.0.
+   *
    * @param {number} seconds
    * @return {string}
    */
   function formatTime(seconds) {
-    const whole = Math.max(0, Math.round(seconds));
-    const minutes = Math.floor(whole / 60);
-    const remaining = whole % 60;
-    return `${minutes}:${String(remaining).padStart(2, '0')}`;
+    const tenths = Math.max(0, Math.round((seconds || 0) * 10) / 10);
+    const minutes = Math.floor(tenths / 60);
+    const remaining = tenths - minutes * 60;
+    return `${minutes}:${remaining.toFixed(1).padStart(4, '0')}`;
   }
 })(Drupal, once);

@@ -5,11 +5,39 @@
  * color-token contract the module's JS reads via getComputedStyle().
  */
 
+/**
+ * Full-bleed player: breaks out of the centred reading column so the
+ * waveform spans the whole viewport, while its metadata row re-aligns to
+ * the column so the text still reads as part of the page.
+ *
+ * The margin trick works because every ancestor is centred: 50% resolves
+ * against the parent's width and 50vw against the viewport, so the
+ * difference is exactly the gutter to pull back over. .layout-container
+ * carries `overflow-x: clip` to absorb the scrollbar's share of 100vw.
+ */
+.pg-player {
+  /* --pg-scrollbar is published by js/scrollbar-width.js; without it a bare
+     100vw overshoots by the scrollbar's width and leaves the page nudgeable
+     sideways. The 0px fallback (pre-JS, or JS off) is the old behaviour,
+     kept harmless by `overflow-x: clip` on the root. */
+  --pg-bleed-width: calc(100vw - var(--pg-scrollbar, 0px));
+
+  width: var(--pg-bleed-width);
+  margin-inline: calc(50% - (var(--pg-bleed-width) / 2));
+  margin-top: var(--pg-space-3);
+}
+
 .pg-waveform {
   background: var(--pg-color-surface-raised);
+  border-block: var(--pg-border-width) solid var(--pg-color-border);
+  padding: var(--pg-space-3);
+}
+
+/* Inside a card (the /recordings teasers) the player is not full-bleed,
+   so it keeps its original boxed look. */
+.pg-waveform--teaser {
   border: var(--pg-border-width) solid var(--pg-color-border);
   border-radius: var(--pg-radius);
-  padding: var(--pg-space-3);
   margin-top: var(--pg-space-3);
 }
 
@@ -38,6 +66,42 @@
   padding-inline: var(--pg-space-1);
   font-size: 0.8125rem;
   color: var(--pg-color-text-muted);
+}
+
+/**
+ * Play/pause toggle. Deliberately a text button rather than an icon: the
+ * label is its own accessible name, so there is no aria-label to drift out
+ * of sync with what is on screen.
+ */
+.pg-waveform-toggle {
+  flex: none;
+  min-width: 5.5em;
+  padding: 0.35em 0.9em;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--pg-color-bg);
+  background: var(--pg-color-text);
+  border: var(--pg-border-width) solid var(--pg-color-text);
+  border-radius: var(--pg-radius);
+  cursor: pointer;
+}
+
+.pg-waveform-toggle:hover:not(:disabled),
+.pg-waveform-toggle.is-playing {
+  background: var(--pg-color-accent);
+  border-color: var(--pg-color-accent);
+}
+
+.pg-waveform-toggle:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pg-waveform-meta--teaser {
+  justify-content: flex-start;
+  gap: var(--pg-space-3);
+  margin-bottom: 0;
 }
 
 .pg-waveform-time {
