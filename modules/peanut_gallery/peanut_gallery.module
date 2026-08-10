@@ -599,9 +599,16 @@ function peanut_gallery_preprocess_comment(array &$variables): void {
  */
 function _peanut_gallery_format_timestamp(float $seconds): string {
   $tenths = round(max(0.0, $seconds), 1);
-  $minutes = (int) floor($tenths / 60);
-  $remaining = $tenths - ($minutes * 60);
-  return sprintf('%d:%04.1f', $minutes, $remaining);
+  $hours = (int) floor($tenths / 3600);
+  $minutes = (int) floor(($tenths - ($hours * 3600)) / 60);
+  $remaining = $tenths - ($hours * 3600) - ($minutes * 60);
+
+  // Hours only appear once there are hours: a comment on a three-minute
+  // track should not read 0:02:14.5. Without this an eight-hour mix
+  // rendered as "509:00.0", which is technically minutes and useless.
+  return $hours > 0
+    ? sprintf('%d:%02d:%04.1f', $hours, $minutes, $remaining)
+    : sprintf('%d:%04.1f', $minutes, $remaining);
 }
 
 /**

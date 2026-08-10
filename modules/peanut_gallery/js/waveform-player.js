@@ -253,8 +253,14 @@
    */
   function formatTime(seconds) {
     const tenths = Math.max(0, Math.round((seconds || 0) * 10) / 10);
-    const minutes = Math.floor(tenths / 60);
-    const remaining = tenths - minutes * 60;
-    return `${minutes}:${remaining.toFixed(1).padStart(4, '0')}`;
+    const hours = Math.floor(tenths / 3600);
+    const minutes = Math.floor((tenths - hours * 3600) / 60);
+    const remaining = (tenths - hours * 3600 - minutes * 60).toFixed(1).padStart(4, '0');
+
+    // Hours only once there are hours — otherwise an eight-hour mix reads
+    // as "509:00.0", which is minutes and unreadable.
+    return hours > 0
+      ? `${hours}:${String(minutes).padStart(2, '0')}:${remaining}`
+      : `${minutes}:${remaining}`;
   }
 })(Drupal, once);
