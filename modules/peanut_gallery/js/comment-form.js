@@ -88,26 +88,27 @@
       wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
 
-    // Remember where playback is, so a comment can be pinned to the moment
-    // the listener is actually hearing.
-    let playheadSeconds = null;
-    document.addEventListener('pg:waveform-position', (event) => {
-      playheadSeconds = event.detail.seconds;
-    });
-
     // Typing is the moment to claim a timestamp. Without this, someone who
     // just listens and types gets a comment pinned to nothing — which is
     // most of the point of this site — and they find out only afterwards,
     // when the comment appears with no time against it. Capturing on first
     // keystroke also means the indicator shows what will be pinned, rather
     // than springing it on them at submit.
+    //
+    // The playhead is read on demand rather than tracked from timeupdate
+    // events, which stop while paused: pausing to write about the bit you
+    // just heard is the normal way to use this.
     const body = wrapper.closest('form')?.querySelector('textarea');
     if (body) {
       body.addEventListener('input', () => {
-        if (currentSeconds === null && playheadSeconds !== null && playheadSeconds > 0) {
-          setSeconds(playheadSeconds);
+        if (currentSeconds !== null) {
+          return;
         }
-      }, { once: false });
+        const playhead = Drupal.peanutGallery?.getPlayheadSeconds?.();
+        if (typeof playhead === 'number' && playhead > 0) {
+          setSeconds(playhead);
+        }
+      });
     }
 
     // The AJAX post empties the fields but cannot reset this indicator,

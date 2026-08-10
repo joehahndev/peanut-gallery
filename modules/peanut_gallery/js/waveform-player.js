@@ -162,6 +162,13 @@
     // add their own marker without re-initialising anything.
     markerLayers[container.dataset.playerId] = { regions, color: markerColor };
 
+    // Let the comment form ask where the playhead is at any moment. An
+    // event-only channel would go quiet whenever playback is paused, and
+    // "paused halfway through, writing a comment about that bit" is the
+    // normal case rather than an edge one.
+    Drupal.peanutGallery = Drupal.peanutGallery || {};
+    Drupal.peanutGallery.getPlayheadSeconds = () => player.getCurrentTime();
+
     player.on('ready', () => {
       findCommentEls(container).forEach(({ el, id, timestamp }) => {
         regions.addRegion({
