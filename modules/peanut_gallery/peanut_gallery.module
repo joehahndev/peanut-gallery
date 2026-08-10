@@ -23,8 +23,11 @@ use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\StringTranslation\ByteSizeMarkup;
 use Drupal\Core\Url;
+use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\user\Entity\User;
+use Drupal\user\OneTimeAuthentication;
+use Drupal\user\UserInterface;
 
 /**
  * Implements hook_help().
@@ -352,9 +355,80 @@ function _peanut_gallery_notify_about_comment(CommentInterface $comment, string 
 }
 
 /**
+ * Emails a freshly invited person a one-time link that signs them in.
+ *
+ * Reuses core's password-reset URL as the front door. That link is
+ * single-use and time-limited, and because the account's password is
+ * random and unknown even to us, this is the only way in — which is the
+ * whole point of a passwordless account.
+ *
+ * @param \Drupal\user\UserInterface $account
+ *   The newly created (or matched) account.
+ * @param int $nid
+ *   The recording they were invited to.
+ */
+function _peanut_gallery_send_invite_login_link(UserInterface $account, int $nid): void {
+  \Drupal::service('plugin.manager.mail')->mail(
+    'peanut_gallery',
+    'invite_welcome',
+    $account->getEmail(),
+    $account->getPreferredLangcode(),
+    ['account' => $account, 'nid' => $nid],
+  );
+}
+
+/**
+ * Builds a one-time login URL across core versions.
+ *
+ * The old user_pass_reset_url() was deprecated in drupal:11.4 in favour of
+ * the OneTimeAuthentication service. This module's core_version_requirement
+ * spans both, so prefer the service and fall back rather than assuming
+ * either exists.
+ */
+function _peanut_gallery_one_time_login_url(UserInterface $account): string {
+  if (\Drupal::hasService(OneTimeAuthentication::class)) {
+    return \Drupal::service(OneTimeAuthentication::class)
+      ->generateOneTimeLoginUrl($account)
+      ->setAbsolute()
+      ->toString();
+  }
+
+  // @phpstan-ignore function.deprecated
+  return user_pass_reset_url($account);
+}
+
+/**
  * Implements hook_mail().
  */
 function peanut_gallery_mail(string $key, array &$message, array $params): void {
+  if ($key === 'invite_welcome') {
+    /** @var \Drupal\user\UserInterface $account */
+    $account = $params['account'];
+    $node = $params['nid'] ? Node::load($params['nid']) : NULL;
+
+    $message['subject'] = t('Your invitation to @site', [
+      '@site' => \Drupal::config('system.site')->get('name'),
+    ]);
+
+    $lines = [
+      t('Hello @name,', ['@name' => $account->getAccountName()]),
+      '',
+    ];
+    if ($node instanceof NodeInterface) {
+      $lines[] = t('You have been invited to listen to "@title" and comment on it.', ['@title' => $node->label()]);
+      $lines[] = '';
+    }
+    $lines[] = t('Use this link to sign in. It works once and expires in a day:');
+    $lines[] = _peanut_gallery_one_time_login_url($account);
+    $lines[] = '';
+    $lines[] = t('There is no password to remember. Whenever you want to come back, request a new sign-in link at @url', [
+      '@url' => Url::fromRoute('user.pass')->setAbsolute()->toString(),
+    ]);
+
+    $message['body'] = $lines;
+    return;
+  }
+
   if ($key !== 'comment_notification') {
     return;
   }

@@ -1,0 +1,5 @@
+peanut_gallery.invite_create:
+  route_name: peanut_gallery.invite_create
+  base_route: entity.node.canonical
+  title: 'Invite'
+  weight: 20

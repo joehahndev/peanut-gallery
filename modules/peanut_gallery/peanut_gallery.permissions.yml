@@ -11,3 +11,8 @@ administer peanut gallery settings:
 receive peanut gallery push notifications:
   title: 'Receive Peanut Gallery push notifications'
   description: 'Allow this role to subscribe a browser to push notifications about new and edited comments.'
+
+issue peanut gallery invites:
+  title: 'Issue Peanut Gallery invitations'
+  description: 'Create single-use links that let someone make an account and access one recording. Also requires edit access to that recording.'
+  restrict access: true

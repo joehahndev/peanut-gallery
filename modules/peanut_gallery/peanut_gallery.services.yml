@@ -51,3 +51,9 @@ services:
     parent: logger.channel_base
     arguments:
       - 'peanut_gallery'
+
+  peanut_gallery.invite_store:
+    class: Drupal\peanut_gallery\Invite\InviteStore
+    arguments:
+      - '@database'
+      - '@datetime.time'

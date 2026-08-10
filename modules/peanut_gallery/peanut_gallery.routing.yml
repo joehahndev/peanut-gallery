@@ -8,6 +8,31 @@ peanut_gallery.recordings:
     # accessCheck() inside the controller; this only gates the page itself.
     _permission: 'access content'
 
+peanut_gallery.invite_create:
+  path: '/node/{node}/invite'
+  defaults:
+    _form: '\Drupal\peanut_gallery\Form\InviteCreateForm'
+    _title: 'Invite'
+  requirements:
+    _permission: 'issue peanut gallery invites'
+    _entity_access: 'node.update'
+    node: \d+
+  options:
+    parameters:
+      node:
+        type: entity:node
+
+peanut_gallery.invite_accept:
+  path: '/invite/{code}'
+  defaults:
+    _form: '\Drupal\peanut_gallery\Form\InviteAcceptForm'
+    _title: 'Accept your invitation'
+  requirements:
+    # Open by design: the code in the URL is the credential. Access is
+    # decided inside the form, which treats unknown, expired and already
+    # redeemed codes identically so the page cannot be used to probe them.
+    _access: 'TRUE'
+
 peanut_gallery.manifest:
   path: '/peanut-gallery/manifest.json'
   defaults:

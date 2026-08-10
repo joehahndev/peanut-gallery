@@ -79,6 +79,69 @@ function peanut_gallery_schema(): array {
     ],
   ];
 
+  $schema['peanut_gallery_invite'] = [
+    'description' => 'Single-use invitation codes for creating an account.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary key.',
+      ],
+      'code_hash' => [
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'description' => 'SHA-256 of the invite code. The code itself is never stored, so a database leak cannot be replayed into free accounts.',
+      ],
+      'nid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Recording the accepting user is granted access to.',
+      ],
+      'created_by' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Who issued the invite.',
+      ],
+      'created' => [
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'When it was issued.',
+      ],
+      'expires' => [
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'After this, the code is refused.',
+      ],
+      'accepted_uid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'User created by this invite; non-zero means spent.',
+      ],
+      'accepted' => [
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'When it was redeemed.',
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'code_hash' => ['code_hash'],
+    ],
+    'indexes' => [
+      'nid' => ['nid'],
+    ],
+  ];
+
   return $schema;
 }
 
@@ -214,6 +277,17 @@ function peanut_gallery_update_10004(): void {
   if (!$schema->tableExists('peanut_gallery_push_subscription')) {
     $tables = peanut_gallery_schema();
     $schema->createTable('peanut_gallery_push_subscription', $tables['peanut_gallery_push_subscription']);
+  }
+}
+
+/**
+ * Creates the invite table on existing sites.
+ */
+function peanut_gallery_update_10005(): void {
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('peanut_gallery_invite')) {
+    $tables = peanut_gallery_schema();
+    $schema->createTable('peanut_gallery_invite', $tables['peanut_gallery_invite']);
   }
 }
 
