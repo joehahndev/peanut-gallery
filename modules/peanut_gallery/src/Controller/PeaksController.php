@@ -125,16 +125,15 @@ final class PeaksController extends ControllerBase {
       ? ['peaks' => $data['detail'] ?? [], 'duration' => $data['duration'] ?? 0]
       : ['peaks' => $data['peaks'] ?? [], 'duration' => $data['duration'] ?? 0];
 
-    if ($detail && !$payload['peaks']) {
-      // Peaks generated before the detail series existed: regenerate once
-      // rather than handing back an empty waveform.
-      $regenerated = $this->peaksGenerator->generate($file);
-      if ($regenerated) {
-        $store->set($key, $regenerated);
-        $payload = ['peaks' => $regenerated['detail'], 'duration' => $regenerated['duration']];
-      }
-    }
-
+    // A recording whose peaks predate the detail series returns an empty
+    // detail payload, and the detail view stays hidden. It is tempting to
+    // regenerate here instead — that is exactly what this code used to do,
+    // and it was a mistake: unlike the branch above it cannot be reached
+    // with the store empty, so the result is never cached against the miss,
+    // and every single page view spawns a fresh full-length ffmpeg decode.
+    // On a 929 MB recording that took the production host to a load average
+    // of 165 and made the site unreachable. Backfill peaks out of band
+    // (drush peanut-gallery:peaks-backfill), never in a web request.
     $response = new CacheableJsonResponse($payload);
     $meta = new CacheableMetadata();
     // Replacing the audio file means saving the node, which invalidates
