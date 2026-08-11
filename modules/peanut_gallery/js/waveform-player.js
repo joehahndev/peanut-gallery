@@ -134,7 +134,14 @@
       // streams for playback instead of being fully downloaded/decoded.
       backend: 'MediaElement',
       waveColor: readToken(style, '--pg-waveform-wave-color', '#999'),
-      progressColor: readToken(style, '--pg-waveform-progress-color', '#555'),
+      // Transparent on purpose — the played region is marked by a veil
+      // (attachProgressVeil) rather than wavesurfer's own progress layer.
+      // That layer redraws the waveform through a canvas clone and a
+      // `source-in` fill, and on the colour waveform the result on screen
+      // lost far more of the hue than the configured alpha accounted for.
+      // A plain translucent div composites in one obvious step instead:
+      // what shows is exactly colour x (1 - alpha).
+      progressColor: 'rgba(0, 0, 0, 0)',
       cursorColor: readToken(style, '--pg-waveform-cursor-color', '#222'),
       // Height comes from the theme too, so a compact context (e.g. the
       // teaser cards on the /recordings listing) can shrink the waveform
@@ -161,6 +168,8 @@
 
     const player = WaveSurfer.create(createOptions);
     const regions = player.registerPlugin(WaveSurfer.Regions.create());
+
+    attachProgressVeil(container, readToken(style, '--pg-waveform-progress-color', 'rgba(0, 0, 0, 0.5)'));
 
     initDetailView(container, media, style);
 
@@ -353,11 +362,9 @@
       peaks: [dense.peaks],
       duration: dense.duration,
       waveColor: readToken(style, '--pg-waveform-wave-color', '#999'),
-      // Its own token, and transparent by default: this view scrolls with
-      // the playhead held in the centre, so everything left of centre is
-      // always played. Marking that permanently would darken half the view
-      // at all times to say something the cursor already says.
-      progressColor: readToken(style, '--pg-waveform-detail-progress-color', 'rgba(0, 0, 0, 0)'),
+      // Transparent for the same reason as the overview: the played region
+      // is marked by the veil below, not by wavesurfer's progress layer.
+      progressColor: 'rgba(0, 0, 0, 0)',
       cursorColor: readToken(style, '--pg-waveform-cursor-color', '#222'),
       height: parseInt(readToken(style, '--pg-waveform-detail-height', '96'), 10) || 96,
       normalize: true,
@@ -371,6 +378,10 @@
       hideScrollbar: true,
       ...(detailColors ? { renderFunction: makeColorRenderer(detailColors, maxOf(dense.peaks)) } : {}),
     });
+
+    // Same played-region treatment as the overview, so the two views read
+    // as one instrument rather than two behaviours.
+    attachProgressVeil(container, readToken(style, '--pg-waveform-progress-color', 'rgba(0, 0, 0, 0.5)'));
 
     // Clicking here pins a comment to that moment, exactly as clicking the
     // overview does. It needs saying twice because `interaction` is raised
@@ -428,6 +439,48 @@
     catch (error) {
       return null;
     }
+  }
+
+  /**
+   * Marks the played region with a translucent veil instead of a redraw.
+   *
+   * wavesurfer does not dim the played region — it *removes* it. Its
+   * renderProgress() sets a clip-path on the wave layer so only the
+   * unplayed side of the real waveform displays, and shows a recoloured
+   * canvas clone (a `source-in` fill) on the played side. With an opaque
+   * progressColor that clone is a flat silhouette; with a translucent one
+   * it is a faint tint over the page background — because the coloured
+   * waveform was never underneath it in the first place. No progressColor
+   * value can produce "the same colours, dimmed" through that pipeline.
+   *
+   * So: cancel the clip so the true waveform stays visible edge to edge
+   * (!important beats the inline style renderProgress writes on every
+   * timeupdate), hide the clone, and paint the `.progress` element — which
+   * wavesurfer keeps sized to the played width — as a translucent veil
+   * over the real thing. One obvious composite: the colour underneath
+   * shows through at exactly 1 - alpha, identically in both themes.
+   *
+   * Reaching into the shadow root is deliberate and contained here; the
+   * selectors and behaviour are pinned by the vendored wavesurfer build,
+   * so they cannot drift underneath us.
+   *
+   * @param {HTMLElement} container
+   *   The element wavesurfer rendered into.
+   * @param {string} color
+   *   The veil colour, normally translucent black from the theme.
+   */
+  function attachProgressVeil(container, color) {
+    const host = [...container.children].find((node) => node.shadowRoot);
+    if (!host) {
+      return;
+    }
+    const veil = document.createElement('style');
+    veil.textContent = `
+      .canvases { clip-path: none !important; }
+      .progress { background: ${color}; }
+      .progress canvas { visibility: hidden; }
+    `;
+    host.shadowRoot.appendChild(veil);
   }
 
   /**
