@@ -33,6 +33,18 @@
   padding: var(--pg-space-3);
 }
 
+/* The zoomed companion view: same width and height as the overview, sat
+   directly beneath it, showing roughly a minute either side of the
+   playhead. A separate top border keeps the two readable as two views
+   rather than one tall waveform. */
+.pg-waveform-detail {
+  --pg-waveform-detail-height: 96px;
+
+  background: var(--pg-color-surface-raised);
+  border-bottom: var(--pg-border-width) solid var(--pg-color-border);
+  padding: var(--pg-space-3);
+}
+
 /* Inside a card (the /recordings teasers) the player is not full-bleed,
    so it keeps its original boxed look. */
 .pg-waveform--teaser {

@@ -118,9 +118,18 @@
     }
 
     const style = getComputedStyle(container);
+
+    // One media element, shared by however many views this recording has.
+    // Two wavesurfer instances pointed at the same <audio> stay in step for
+    // free, because there is only one thing actually playing — no position
+    // syncing to write, and nothing to drift.
+    const media = new Audio();
+    media.preload = 'metadata';
+    media.src = audioUrl;
+
     const createOptions = {
       container,
-      url: audioUrl,
+      media,
       // MediaElement (not WebAudio decode-to-buffer) so an hour-long file
       // streams for playback instead of being fully downloaded/decoded.
       backend: 'MediaElement',
@@ -147,6 +156,8 @@
 
     const player = WaveSurfer.create(createOptions);
     const regions = player.registerPlugin(WaveSurfer.Regions.create());
+
+    initDetailView(container, media, style);
 
     const markerColor = readToken(style, '--pg-waveform-marker-color', '#c0392b');
     const markerActiveColor = readToken(style, '--pg-waveform-marker-active-color', '#e74c3c');
@@ -289,6 +300,76 @@
     });
     player.on('pause', () => setPlaying(false));
     player.on('finish', () => setPlaying(false));
+  }
+
+  /**
+   * Builds the zoomed, scrolling view beneath the overview.
+   *
+   * Shares the overview's media element, so playback, seeking and the two
+   * cursors stay in step without any syncing code. It needs its own, far
+   * denser peaks: the overview's 800 buckets span the whole recording, so
+   * at this zoom barely one of them would fall inside the visible window.
+   *
+   * @param {HTMLElement} overviewContainer
+   *   The overview waveform's container, used to find the detail one.
+   * @param {HTMLMediaElement} media
+   *   The audio element both views share.
+   * @param {CSSStyleDeclaration} style
+   *   Computed style carrying the theme's colour tokens.
+   */
+  async function initDetailView(overviewContainer, media, style) {
+    const playerId = overviewContainer.dataset.playerId;
+    const container = document.querySelector(`.pg-waveform-detail[data-player-id="${playerId}"]`);
+    const nodeId = overviewContainer.dataset.nodeId;
+    if (!container || !nodeId) {
+      return;
+    }
+
+    const dense = await fetchPeaks(Drupal.url(`peanut-gallery/peaks/${nodeId}/detail`));
+    if (!dense || !dense.peaks.length) {
+      // Without dense peaks this view would be a flat line, which is worse
+      // than not offering it.
+      return;
+    }
+
+    const windowSeconds = parseFloat(container.dataset.windowSeconds) || 60;
+
+    // Reveal before measuring: a hidden element reports clientWidth 0, and
+    // a zoom of zero px/sec silently renders the whole recording at
+    // overview scale instead of the intended window.
+    container.hidden = false;
+    const pxPerSec = (container.clientWidth || overviewContainer.clientWidth) / windowSeconds;
+
+    const detail = WaveSurfer.create({
+      container,
+      media,
+      backend: 'MediaElement',
+      peaks: [dense.peaks],
+      duration: dense.duration,
+      waveColor: readToken(style, '--pg-waveform-wave-color', '#999'),
+      progressColor: readToken(style, '--pg-waveform-progress-color', '#555'),
+      cursorColor: readToken(style, '--pg-waveform-cursor-color', '#222'),
+      height: parseInt(readToken(style, '--pg-waveform-detail-height', '96'), 10) || 96,
+      normalize: true,
+      // Zoom so the requested window fills the width, then let wavesurfer
+      // scroll it and keep the cursor centred. fillParent must be off or
+      // it would squeeze the whole recording back into view.
+      minPxPerSec: pxPerSec,
+      fillParent: false,
+      autoScroll: true,
+      autoCenter: true,
+      hideScrollbar: true,
+    });
+
+    // Re-zoom on resize so the window stays a minute wide rather than
+    // however many minutes the original width happened to imply.
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        detail.zoom(container.clientWidth / windowSeconds);
+      }, 150);
+    });
   }
 
   /**
