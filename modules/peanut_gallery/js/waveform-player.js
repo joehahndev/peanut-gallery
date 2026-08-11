@@ -361,6 +361,21 @@
       hideScrollbar: true,
     });
 
+    // Clicking here pins a comment to that moment, exactly as clicking the
+    // overview does. It needs saying twice because `interaction` is raised
+    // by the instance the pointer actually landed on: the shared media
+    // element means the *seek* propagates to the overview for free, but the
+    // event does not, so without this the precise view — the one worth
+    // clicking, at 122x the overview's resolution — was the one that could
+    // not set a timestamp.
+    detail.on('interaction', (newTime) => {
+      document.dispatchEvent(
+        new CustomEvent('pg:waveform-seek', {
+          detail: { seconds: newTime, playerId },
+        }),
+      );
+    });
+
     // Re-zoom on resize so the window stays a minute wide rather than
     // however many minutes the original width happened to imply.
     let resizeTimer = null;
