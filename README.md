@@ -127,9 +127,20 @@ the comment form's inputs line up.
 ## Layout
 
 ```
-modules/peanut_gallery/     the module
+modules/peanut_gallery/       the module
 themes/peanut_gallery_theme/  the theme
+scripts/                      out-of-band peaks and colour generation
 ```
+
+Further reading:
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — how it is built, what each service
+  does, and the measurements behind the decisions that look arbitrary. Start
+  here before changing anything non-trivial.
+- **[CLAUDE.md](CLAUDE.md)** — the short version: the load-bearing rules and the
+  commands, for an agent picking this up cold.
+- **[scripts/README.md](scripts/README.md)** — generating waveform data for long
+  recordings without taking the host down.
 
 The module ships the Recording content type, its fields, the
 `recording_comment` comment type, and view/form displays as install config.
