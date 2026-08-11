@@ -72,12 +72,24 @@
     <div class="pg-waveform-meta">
       {# Hidden until waveform-player.js wires it up, so it is never a dead
          control for a visitor without JavaScript. #}
-      <button
-        type="button"
-        class="pg-waveform-toggle"
-        data-player-id="{{ pg_waveform.player_id }}"
-        hidden
-      >{{ 'Play'|t }}</button>
+      {# Skip controls flank the play button. On an hours-long recording,
+         dragging the waveform is far too coarse to land on a moment — a
+         pixel can be a minute or more. #}
+      <span class="pg-waveform-transport" hidden data-player-id="{{ pg_waveform.player_id }}">
+        <button type="button" class="pg-waveform-skip" data-pg-skip="-30"
+          title="{{ 'Back 30 seconds'|t }}">&minus;30s</button>
+        <button type="button" class="pg-waveform-skip" data-pg-skip="-5"
+          title="{{ 'Back 5 seconds'|t }}">&minus;5s</button>
+        <button
+          type="button"
+          class="pg-waveform-toggle"
+          data-player-id="{{ pg_waveform.player_id }}"
+        >{{ 'Play'|t }}</button>
+        <button type="button" class="pg-waveform-skip" data-pg-skip="5"
+          title="{{ 'Forward 5 seconds'|t }}">+5s</button>
+        <button type="button" class="pg-waveform-skip" data-pg-skip="30"
+          title="{{ 'Forward 30 seconds'|t }}">+30s</button>
+      </span>
       <span class="pg-waveform-time" data-player-id="{{ pg_waveform.player_id }}">
         {%- if pg_waveform.duration_formatted -%}0:00.0 / {{ pg_waveform.duration_formatted }}{%- endif -%}
       </span>

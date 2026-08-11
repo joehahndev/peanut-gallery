@@ -73,6 +73,33 @@
  * label is its own accessible name, so there is no aria-label to drift out
  * of sync with what is on screen.
  */
+.pg-waveform-transport {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pg-space-1);
+  flex: none;
+}
+
+/* Skip buttons read as secondary to Play: same shape, quieter fill. */
+.pg-waveform-skip {
+  flex: none;
+  padding: 0.35em 0.55em;
+  font: inherit;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--pg-color-text);
+  background: transparent;
+  border: var(--pg-border-width) solid var(--pg-color-border);
+  border-radius: var(--pg-radius);
+  cursor: pointer;
+}
+
+.pg-waveform-skip:hover,
+.pg-waveform-skip:focus-visible {
+  color: var(--pg-color-accent);
+  border-color: var(--pg-color-accent);
+}
+
 .pg-waveform-toggle {
   flex: none;
   min-width: 5.5em;

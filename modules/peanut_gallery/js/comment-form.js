@@ -99,7 +99,33 @@
     // events, which stop while paused: pausing to write about the bit you
     // just heard is the normal way to use this.
     const body = wrapper.closest('form')?.querySelector('textarea');
+
+    // Enter posts, Shift+Enter makes a new line — the convention everyone
+    // already has from chat apps, and these comments are one sentence about
+    // a moment rather than prose.
     if (body) {
+      body.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+        // Leave IME composition alone: mid-composition Enter commits a
+        // candidate word in Japanese, Chinese and Korean input, and
+        // hijacking it would post half-finished text.
+        if (event.isComposing || event.keyCode === 229) {
+          return;
+        }
+
+        const submit = body.closest('form')?.querySelector('.js-form-submit');
+        if (!submit) {
+          return;
+        }
+        event.preventDefault();
+        // Drupal binds AJAX submits to mousedown, not click, so a
+        // synthesised click posts the form the old way — full page reload,
+        // losing the listener's place in the recording.
+        submit.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      });
+
       body.addEventListener('input', () => {
         if (currentSeconds !== null) {
           return;

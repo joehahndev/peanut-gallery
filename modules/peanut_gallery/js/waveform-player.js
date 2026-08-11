@@ -152,6 +152,23 @@
     const markerActiveColor = readToken(style, '--pg-waveform-marker-active-color', '#e74c3c');
     const timeEl = document.querySelector(`.pg-waveform-time[data-player-id="${container.dataset.playerId}"]`);
     const toggleEl = document.querySelector(`.pg-waveform-toggle[data-player-id="${container.dataset.playerId}"]`);
+    const transportEl = document.querySelector(`.pg-waveform-transport[data-player-id="${container.dataset.playerId}"]`);
+
+    // The whole transport is hidden in the markup and revealed here, so a
+    // visitor without JavaScript is never shown controls that do nothing.
+    if (transportEl) {
+      transportEl.hidden = false;
+      transportEl.querySelectorAll('[data-pg-skip]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const delta = parseFloat(button.dataset.pgSkip);
+          const duration = player.getDuration() || 0;
+          // Clamping matters at both ends: seeking past the end stops
+          // playback dead, and a negative time is simply invalid.
+          const target = Math.min(Math.max(player.getCurrentTime() + delta, 0), Math.max(duration - 0.1, 0));
+          player.setTime(target);
+        });
+      });
+    }
 
     players.push(player);
     if (toggleEl) {
@@ -247,7 +264,6 @@
    *   The button rendered next to this player.
    */
   function wireToggle(player, toggleEl) {
-    toggleEl.hidden = false;
     toggleEl.disabled = true;
 
     player.on('ready', () => {
