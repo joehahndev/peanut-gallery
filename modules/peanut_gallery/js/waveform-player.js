@@ -353,7 +353,11 @@
       peaks: [dense.peaks],
       duration: dense.duration,
       waveColor: readToken(style, '--pg-waveform-wave-color', '#999'),
-      progressColor: readToken(style, '--pg-waveform-progress-color', '#555'),
+      // Its own token, and transparent by default: this view scrolls with
+      // the playhead held in the centre, so everything left of centre is
+      // always played. Marking that permanently would darken half the view
+      // at all times to say something the cursor already says.
+      progressColor: readToken(style, '--pg-waveform-detail-progress-color', 'rgba(0, 0, 0, 0)'),
       cursorColor: readToken(style, '--pg-waveform-cursor-color', '#222'),
       height: parseInt(readToken(style, '--pg-waveform-detail-height', '96'), 10) || 96,
       normalize: true,

@@ -22,7 +22,25 @@
      peanut_gallery module's JS, which reads these via getComputedStyle()
      rather than the module hardcoding any color. */
   --pg-waveform-wave-color: #d4cfc4;
-  --pg-waveform-progress-color: var(--pg-color-accent);
+  /* Translucent, not solid. wavesurfer draws the played region by cloning
+     the waveform and refilling it through `source-in`, so an opaque color
+     replaces every pixel — which on a three-band color waveform throws away
+     the entire reason for having one. An alpha fill preserves the hue
+     exactly and only lowers the brightness: rgb(240,120,40) becomes
+     rgb(144,72,24), the same color at 60%.
+
+     This one number is the dial. It is applied to an already-dark waveform
+     — the demo mix averages level 120 of 255, not 240 — so the alpha bites
+     harder than it reads: 0.4 leaves played at 72, and 0.55 leaves it at
+     54, which against a near-black page is close to gone. Turn it down,
+     not up, if played audio disappears. */
+  --pg-waveform-progress-color: rgba(0, 0, 0, 0.4);
+  /* The detail view makes no played/unplayed distinction. It scrolls with
+     the playhead held in the centre, so its left half is *always* played —
+     dimming it permanently would darken half the view at all times while
+     telling you nothing you can't see from the cursor. "How far into the
+     mix am I" is a question the overview answers. */
+  --pg-waveform-detail-progress-color: rgba(0, 0, 0, 0);
   --pg-waveform-cursor-color: var(--pg-color-text);
   --pg-waveform-marker-color: #2e6fd6;
   --pg-waveform-marker-active-color: var(--pg-color-accent);
@@ -61,7 +79,11 @@
     --pg-color-focus: #6ba1ff;
 
     --pg-waveform-wave-color: #3b3733;
-    --pg-waveform-progress-color: var(--pg-color-accent);
+    /* See the light-theme definition: translucent so the played region
+       keeps its hue. Dimming towards the background reads as "already
+       heard" on a dark ground as readily as on a light one. */
+    --pg-waveform-progress-color: rgba(0, 0, 0, 0.4);
+    --pg-waveform-detail-progress-color: rgba(0, 0, 0, 0);
     --pg-waveform-cursor-color: var(--pg-color-text);
     --pg-waveform-marker-color: #6ba1ff;
     --pg-waveform-marker-active-color: var(--pg-color-accent);
