@@ -151,6 +151,11 @@
         // this endpoint always returns a single (mono) channel.
         createOptions.peaks = [cached.peaks];
         createOptions.duration = cached.duration;
+
+        const colors = decodeColors(cached.color, cached.colorPoints);
+        if (colors) {
+          createOptions.renderFunction = makeColorRenderer(colors, maxOf(cached.peaks));
+        }
       }
     }
 
@@ -332,6 +337,7 @@
       return;
     }
 
+    const detailColors = decodeColors(dense.color, dense.colorPoints);
     const windowSeconds = parseFloat(container.dataset.windowSeconds) || 60;
 
     // Reveal before measuring: a hidden element reports clientWidth 0, and
@@ -359,6 +365,7 @@
       autoScroll: true,
       autoCenter: true,
       hideScrollbar: true,
+      ...(detailColors ? { renderFunction: makeColorRenderer(detailColors, maxOf(dense.peaks)) } : {}),
     });
 
     // Clicking here pins a comment to that moment, exactly as clicking the
@@ -388,8 +395,155 @@
   }
 
   /**
+   * Turns the packed colour payload into bytes the renderer can index.
+   *
+   * @param {string|undefined} encoded
+   *   Base64 of low/mid/high triplets, one byte per band per point.
+   * @param {number|undefined} points
+   *   How many points those bytes describe.
+   * @return {{bytes: Uint8Array, points: number}|null}
+   *   NULL whenever colour is absent or malformed, which is a supported
+   *   state: the waveform simply draws in one colour.
+   */
+  function decodeColors(encoded, points) {
+    if (typeof encoded !== 'string' || !encoded || !points) {
+      return null;
+    }
+
+    try {
+      const binary = atob(encoded);
+      if (binary.length < points * 3) {
+        return null;
+      }
+      const bytes = new Uint8Array(points * 3);
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return { bytes, points };
+    }
+    catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Largest value in a peak series, without blowing the stack.
+   *
+   * Math.max(...array) is the idiomatic one-liner and it throws on the
+   * dense series — spreading three hundred thousand arguments exceeds the
+   * engine's argument limit.
+   *
+   * @param {number[]} values
+   * @return {number}
+   */
+  function maxOf(values) {
+    let max = 0;
+    for (let i = 0; i < values.length; i++) {
+      if (values[i] > max) {
+        max = values[i];
+      }
+    }
+    return max;
+  }
+
+  /**
+   * Lookup table lifting the mid-tones of the stored colour bytes.
+   *
+   * The stored values are honest band energies scaled against the loudest
+   * part of the recording, and on a mix with a lot of headroom that leaves
+   * the typical point sitting low — measured at a mean of 79 of 255 on an
+   * eight-hour set, which draws as murky brown rather than anything you
+   * would recognise as a DJ waveform. A gamma curve lifts those mid-tones
+   * while preserving both ordering and the ratios between bands, so the
+   * hue is untouched and only the brightness changes.
+   *
+   * Deliberately applied here rather than baked into the stored data: the
+   * decode that produces it takes minutes, and this is exactly the kind of
+   * value worth being able to retune without paying that again.
+   *
+   * @return {Uint8Array}
+   */
+  function colorGammaTable() {
+    const table = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) {
+      table[i] = Math.round(255 * Math.pow(i / 255, 0.6));
+    }
+    return table;
+  }
+
+  /**
+   * Builds a wavesurfer renderFunction that draws the waveform in colour.
+   *
+   * Each vertical slice is coloured by how the energy at that moment splits
+   * across low, mid and high — the convention DJ software uses, and the
+   * reason it is worth doing: amplitude alone cannot tell a kick from a
+   * cymbal, but colour can.
+   *
+   * The awkward part is knowing *where* in the recording a given canvas is.
+   * wavesurfer splits a long waveform across several canvases and hands
+   * this function only the slice of channel data for one of them. It does,
+   * however, position each canvas before calling us, so the canvas's own
+   * `style.left` and `style.width` say which horizontal span of the whole
+   * waveform it covers — enough to map every pixel back to a colour index
+   * without wavesurfer telling us directly.
+   *
+   * @param {{bytes: Uint8Array, points: number}} colors
+   * @param {number} maxPeak
+   *   The largest value in the whole series. Supplying a custom
+   *   renderFunction bypasses wavesurfer's own `normalize` handling, so the
+   *   scaling has to happen here — and it has to come from the entire
+   *   series, not from the slice this canvas received. A long waveform is
+   *   split across several canvases, and normalising each against its own
+   *   contents would make a quiet stretch as tall as a loud one, with a
+   *   visible step at every canvas boundary.
+   * @return {function(Array<Float32Array|number[]>, CanvasRenderingContext2D): void}
+   */
+  function makeColorRenderer(colors, maxPeak) {
+    const gamma = colorGammaTable();
+    const scale = maxPeak > 0 ? 1 / maxPeak : 1;
+
+    return (channelData, ctx) => {
+      const canvas = ctx.canvas;
+      const samples = channelData[0];
+      if (!samples || !samples.length) {
+        return;
+      }
+
+      const left = parseFloat(canvas.style.left) || 0;
+      const cssWidth = parseFloat(canvas.style.width) || canvas.width;
+      // The wrapper spans the whole waveform, so it is the only thing that
+      // knows the total width this canvas is a slice of.
+      const totalWidth = canvas.parentElement?.scrollWidth || cssWidth;
+      const deviceWidth = canvas.width;
+      const height = canvas.height;
+      const middle = height / 2;
+
+      ctx.clearRect(0, 0, deviceWidth, height);
+
+      for (let x = 0; x < deviceWidth; x++) {
+        const fraction = x / deviceWidth;
+
+        // Amplitude comes from this canvas's own slice of the peaks, so it
+        // stays in step with the uncoloured rendering.
+        const sample = Math.abs(samples[Math.min(samples.length - 1, Math.floor(fraction * samples.length))] || 0);
+
+        // Colour comes from the full-length series, so it needs the
+        // absolute position rather than the position within this slice.
+        const absolute = (left + fraction * cssWidth) / totalWidth;
+        const point = Math.min(colors.points - 1, Math.max(0, Math.floor(absolute * colors.points)));
+        const offset = point * 3;
+
+        ctx.fillStyle = `rgb(${gamma[colors.bytes[offset]]}, ${gamma[colors.bytes[offset + 1]]}, ${gamma[colors.bytes[offset + 2]]})`;
+
+        const barHeight = Math.max(1, Math.min(1, sample * scale) * height);
+        ctx.fillRect(x, middle - barHeight / 2, 1, barHeight);
+      }
+    };
+  }
+
+  /**
    * @param {string} url
-   * @return {Promise<{peaks: number[][], duration: number}|null>}
+   * @return {Promise<{peaks: number[][], duration: number, color: string|undefined, colorPoints: number|undefined}|null>}
    */
   async function fetchPeaks(url) {
     try {

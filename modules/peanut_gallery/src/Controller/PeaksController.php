@@ -30,6 +30,14 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 final class PeaksController extends ControllerBase {
 
+  /**
+   * Overview bucket count, mirroring PeaksGenerator::BUCKETS.
+   *
+   * The colour payload has to say how many points it carries so the client
+   * can map a pixel to a colour without assuming a resolution.
+   */
+  protected const OVERVIEW_BUCKETS = 800;
+
   public function __construct(
     protected readonly PeaksGenerator $peaksGenerator,
     protected readonly KeyValueFactoryInterface $keyValueFactory,
@@ -124,6 +132,18 @@ final class PeaksController extends ControllerBase {
     $payload = $detail
       ? ['peaks' => $data['detail'] ?? [], 'duration' => $data['duration'] ?? 0]
       : ['peaks' => $data['peaks'] ?? [], 'duration' => $data['duration'] ?? 0];
+
+    // Three-band colour, when it has been generated. Optional throughout:
+    // a recording without it draws in a single colour exactly as before,
+    // so this can never break a player that is already working.
+    $color = $this->keyValueFactory->get('peanut_gallery.peaks_color')->get($key);
+    if ($color) {
+      $series = $detail ? ($color['detail'] ?? '') : ($color['overview'] ?? '');
+      if ($series !== '') {
+        $payload['color'] = $series;
+        $payload['colorPoints'] = $detail ? ($color['points'] ?? 0) : self::OVERVIEW_BUCKETS;
+      }
+    }
 
     // A recording whose peaks predate the detail series returns an empty
     // detail payload, and the detail view stays hidden. It is tempting to
