@@ -77,6 +77,22 @@ peanut_gallery.settings:
   requirements:
     _permission: 'administer peanut gallery settings'
 
+peanut_gallery.peaks_detail:
+  path: '/peanut-gallery/peaks/{node}/detail'
+  defaults:
+    _controller: '\Drupal\peanut_gallery\Controller\PeaksController::detail'
+  requirements:
+    # Same posture as the overview: access is enforced in the controller,
+    # which 404s rather than 403s so a private recording's existence cannot
+    # be inferred.
+    _access: 'TRUE'
+    node: \d+
+  options:
+    _format: json
+    parameters:
+      node:
+        type: entity:node
+
 peanut_gallery.peaks:
   path: '/peanut-gallery/peaks/{node}'
   defaults:

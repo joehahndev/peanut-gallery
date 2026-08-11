@@ -43,6 +43,24 @@ class PeaksGenerator {
    */
   protected const BUCKETS = 800;
 
+  /**
+   * Peaks per second for the zoomed detail view.
+   *
+   * The overview's 800 buckets span the whole recording, which on an
+   * eight-hour mix is 38 seconds per bucket — zoom into a one-minute
+   * window and barely one data point falls inside it. The detail view
+   * needs its own, far denser series.
+   */
+  protected const DETAIL_PER_SECOND = 10;
+
+  /**
+   * Ceiling on detail points, so payload stays bounded at any length.
+   *
+   * Reached at about eleven hours, past which the resolution degrades
+   * gracefully rather than the response growing without limit.
+   */
+  protected const DETAIL_MAX_POINTS = 400000;
+
   public function __construct(
     protected readonly FileSystemInterface $fileSystem,
   ) {}
@@ -57,7 +75,7 @@ class PeaksGenerator {
   /**
    * Decodes $file with ffmpeg and returns normalized display peaks.
    *
-   * @return array{peaks: float[], duration: float}|null
+   * @return array{peaks: float[], detail: float[], duration: float}|null
    *   NULL if ffmpeg is unavailable or decoding fails for any reason —
    *   callers must treat that as "no peaks yet", never as an error to
    *   surface to the visitor.
@@ -123,13 +141,12 @@ class PeaksGenerator {
   /**
    * Streams the decode, filling a fixed number of peak buckets.
    *
-   * @return array{peaks: float[], duration: float}|null
+   * @return array{peaks: float[], detail: float[], duration: float}|null
    *   The peaks and duration, or NULL if ffmpeg produced nothing.
    */
   protected function streamPeaks(string $ffmpeg, string $path, float $duration): ?array {
     $rate = $this->rateFor($duration);
     $expected = max(1, (int) round($duration * $rate));
-    $bucketSize = max(1, intdiv($expected, self::BUCKETS));
 
     $cmd = sprintf(
       '%s -v error -i %s -ac 1 -ar %d -f s16le pipe:1',
@@ -143,7 +160,15 @@ class PeaksGenerator {
       return NULL;
     }
 
-    $peaks = array_fill(0, self::BUCKETS, 0);
+    // Bucket at the detail resolution and derive the overview from it
+    // afterwards. The overview is the max of a run of detail maxima, which
+    // is exactly the max of the underlying samples — so one pass produces
+    // both series, and they cannot disagree about where the loud parts
+    // are.
+    $detailCount = $this->detailPointsFor($duration);
+    $detailSize = max(1, (int) floor($expected / $detailCount));
+
+    $detail = array_fill(0, $detailCount, 0);
     $index = 0;
     $carry = '';
     $seen = FALSE;
@@ -175,15 +200,15 @@ class PeaksGenerator {
       $pos = 0;
 
       while ($pos < $count) {
-        $bucket = intdiv($index, $bucketSize);
-        if ($bucket >= self::BUCKETS - 1) {
+        $bucket = intdiv($index, $detailSize);
+        if ($bucket >= $detailCount - 1) {
           // Anything past the last bucket (rounding drift, or a file
           // slightly longer than its metadata claims) folds into it.
-          $bucket = self::BUCKETS - 1;
+          $bucket = $detailCount - 1;
           $take = $count - $pos;
         }
         else {
-          $take = min($count - $pos, (($bucket + 1) * $bucketSize) - $index);
+          $take = min($count - $pos, (($bucket + 1) * $detailSize) - $index);
         }
         $take = max(1, $take);
 
@@ -192,8 +217,8 @@ class PeaksGenerator {
         // magnitude is either the biggest positive or the most negative
         // value, and max()/min() run in C.
         $peak = max(max($slice), -min($slice));
-        if ($peak > $peaks[$bucket]) {
-          $peaks[$bucket] = $peak;
+        if ($peak > $detail[$bucket]) {
+          $detail[$bucket] = $peak;
         }
 
         $pos += $take;
@@ -208,9 +233,47 @@ class PeaksGenerator {
     }
 
     return [
-      'peaks' => array_map(static fn (int $peak): float => round($peak / 32768, 3), $peaks),
+      'peaks' => $this->reduce($detail, self::BUCKETS),
+      'detail' => array_map(static fn (int $peak): float => round($peak / 32768, 3), $detail),
       'duration' => round($duration, 2),
     ];
+  }
+
+  /**
+   * Reduces a dense series to a fixed number of normalized buckets.
+   *
+   * @param int[] $values
+   *   Raw peak magnitudes.
+   * @param int $buckets
+   *   How many buckets to produce.
+   *
+   * @return float[]
+   *   Normalized 0..1 peaks.
+   */
+  protected function reduce(array $values, int $buckets): array {
+    $total = count($values);
+    if ($total === 0) {
+      return [];
+    }
+
+    $size = max(1, (int) floor($total / $buckets));
+    $out = [];
+
+    for ($i = 0; $i < $buckets; $i++) {
+      $slice = array_slice($values, $i * $size, $i === $buckets - 1 ? NULL : $size);
+      $out[] = $slice ? round(max($slice) / 32768, 3) : 0.0;
+    }
+
+    return $out;
+  }
+
+  /**
+   * How many detail points to produce for a recording of this length.
+   */
+  protected function detailPointsFor(float $duration): int {
+    $wanted = (int) ceil(max($duration, 1.0) * self::DETAIL_PER_SECOND);
+
+    return max(self::BUCKETS, min($wanted, self::DETAIL_MAX_POINTS));
   }
 
   /**

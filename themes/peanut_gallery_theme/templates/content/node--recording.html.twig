@@ -64,6 +64,16 @@
         data-audio-url="{{ pg_waveform.audio_url }}"
         data-loading-text="{{ 'Loading waveform…'|t }}"
       ></div>
+
+      {# Zoomed companion view: a one-minute window that scrolls with the
+         playhead held in the centre. Hidden until its dense peaks load, so
+         it never appears as an empty box. #}
+      <div
+        class="pg-waveform-detail"
+        data-player-id="{{ pg_waveform.player_id }}"
+        data-window-seconds="60"
+        hidden
+      ></div>
     </div>
     <noscript>
       <p class="pg-waveform-noscript">{{ 'Enable JavaScript to see and use the waveform player. You can still read and post comments below.'|t }}</p>
