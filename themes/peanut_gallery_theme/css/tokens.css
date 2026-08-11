@@ -26,16 +26,23 @@
      the waveform and refilling it through `source-in`, so an opaque color
      replaces every pixel — which on a three-band color waveform throws away
      the entire reason for having one. An alpha fill preserves the hue
-     exactly and only lowers the brightness: rgb(240,120,40) becomes
-     rgb(204,102,34), the same color at 85%.
+     exactly and only shifts the brightness.
 
-     This one number is the dial, and it wants to be gentler than it looks.
-     It multiplies an already-dark waveform — the demo mix averages level
-     120 of 255, not 240 — so the alpha bites much harder than it reads.
-     Measured played levels: 0.15 -> 102, 0.4 -> 72, 0.55 -> 54, against a
-     page background of 19. Anything past about 0.4 stops reading as
+     WHITE here, black in the dark-mode block below, and that inversion is
+     the whole point. "Played" should *recede*, which means moving toward
+     the page background — and the two themes have backgrounds at opposite
+     ends of the scale (251 here, 19 there). A single darkening value cannot
+     do both: on this light ground it would push played audio *away* from
+     the background and make it the most prominent thing on the page, which
+     is backwards. Fading toward white moves it 15% of the way to the
+     background, exactly as the dark theme's black does.
+
+     The alpha bites harder than it reads either way, because it acts on an
+     already-mid-toned waveform — the demo mix averages level 120 of 255,
+     not 240. Measured in dark mode: 0.15 -> 102, 0.4 -> 72, 0.55 -> 54,
+     against a background of 19. Past about 0.4 it stops reading as
      "already heard" and starts reading as "missing". */
-  --pg-waveform-progress-color: rgba(0, 0, 0, 0.15);
+  --pg-waveform-progress-color: rgba(255, 255, 255, 0.15);
   /* The detail view makes no played/unplayed distinction. It scrolls with
      the playhead held in the centre, so its left half is *always* played —
      dimming it permanently would darken half the view at all times while
@@ -80,9 +87,10 @@
     --pg-color-focus: #6ba1ff;
 
     --pg-waveform-wave-color: #3b3733;
-    /* See the light-theme definition: translucent so the played region
-       keeps its hue. Dimming towards the background reads as "already
-       heard" on a dark ground as readily as on a light one. */
+    /* Black, where the light theme uses white — see the reasoning there.
+       Both fade the played region 15% of the way toward their own page
+       background, which is what makes it recede rather than merely change:
+       120 -> 102 against this theme's background of 19. */
     --pg-waveform-progress-color: rgba(0, 0, 0, 0.15);
     --pg-waveform-detail-progress-color: rgba(0, 0, 0, 0);
     --pg-waveform-cursor-color: var(--pg-color-text);
