@@ -154,7 +154,7 @@
 
         const colors = decodeColors(cached.color, cached.colorPoints);
         if (colors) {
-          createOptions.renderFunction = makeColorRenderer(colors);
+          createOptions.renderFunction = makeColorRenderer(colors, maxOf(cached.peaks));
         }
       }
     }
@@ -365,7 +365,7 @@
       autoScroll: true,
       autoCenter: true,
       hideScrollbar: true,
-      ...(detailColors ? { renderFunction: makeColorRenderer(detailColors) } : {}),
+      ...(detailColors ? { renderFunction: makeColorRenderer(detailColors, maxOf(dense.peaks)) } : {}),
     });
 
     // Clicking here pins a comment to that moment, exactly as clicking the
@@ -427,6 +427,26 @@
   }
 
   /**
+   * Largest value in a peak series, without blowing the stack.
+   *
+   * Math.max(...array) is the idiomatic one-liner and it throws on the
+   * dense series — spreading three hundred thousand arguments exceeds the
+   * engine's argument limit.
+   *
+   * @param {number[]} values
+   * @return {number}
+   */
+  function maxOf(values) {
+    let max = 0;
+    for (let i = 0; i < values.length; i++) {
+      if (values[i] > max) {
+        max = values[i];
+      }
+    }
+    return max;
+  }
+
+  /**
    * Lookup table lifting the mid-tones of the stored colour bytes.
    *
    * The stored values are honest band energies scaled against the loudest
@@ -468,10 +488,19 @@
    * without wavesurfer telling us directly.
    *
    * @param {{bytes: Uint8Array, points: number}} colors
+   * @param {number} maxPeak
+   *   The largest value in the whole series. Supplying a custom
+   *   renderFunction bypasses wavesurfer's own `normalize` handling, so the
+   *   scaling has to happen here — and it has to come from the entire
+   *   series, not from the slice this canvas received. A long waveform is
+   *   split across several canvases, and normalising each against its own
+   *   contents would make a quiet stretch as tall as a loud one, with a
+   *   visible step at every canvas boundary.
    * @return {function(Array<Float32Array|number[]>, CanvasRenderingContext2D): void}
    */
-  function makeColorRenderer(colors) {
+  function makeColorRenderer(colors, maxPeak) {
     const gamma = colorGammaTable();
+    const scale = maxPeak > 0 ? 1 / maxPeak : 1;
 
     return (channelData, ctx) => {
       const canvas = ctx.canvas;
@@ -506,7 +535,7 @@
 
         ctx.fillStyle = `rgb(${gamma[colors.bytes[offset]]}, ${gamma[colors.bytes[offset + 1]]}, ${gamma[colors.bytes[offset + 2]]})`;
 
-        const barHeight = Math.max(1, sample * height);
+        const barHeight = Math.max(1, Math.min(1, sample * scale) * height);
         ctx.fillRect(x, middle - barHeight / 2, 1, barHeight);
       }
     };
