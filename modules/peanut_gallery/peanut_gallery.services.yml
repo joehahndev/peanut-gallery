@@ -18,6 +18,11 @@ services:
     arguments:
       - '@file_system'
 
+  peanut_gallery.color_peaks_generator:
+    class: Drupal\peanut_gallery\Peaks\ColorPeaksGenerator
+    arguments:
+      - '@file_system'
+
   peanut_gallery.comment_reply_access_check:
     class: Drupal\peanut_gallery\Access\RecordingCommentReplyAccessCheck
     tags:

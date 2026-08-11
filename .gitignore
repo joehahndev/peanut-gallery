@@ -24,3 +24,7 @@ Thumbs.db
 
 # Playwright MCP debug artifacts
 .playwright-mcp/
+
+# Local audio and generated analysis artifacts — large, regenerable,
+# and one careless `git add -A` away from a multi-gigabyte repository.
+/uploads/
