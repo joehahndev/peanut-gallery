@@ -6,6 +6,14 @@ A Drupal 11 module + custom theme: upload hours-long audio recordings, play them
 in a wavesurfer.js waveform, and let people comment pinned to an exact moment.
 Recordings are public or private with a per-recording shared-with list.
 
+**Consumers:** two sites run this module — the live
+peanutgallery.joehahn.dev (deploys from `master`) and the
+mix-comments-saas SaaS dev site (`~/dev/mix-comments-saas` in WSL, tracks
+the working tree via symlink; see `C:\dev\mix-comments-saas\docs\HANDOFF.md`).
+The **`review-loop` branch** carries the v1.1 review-loop feature set
+(pre-roll, deep links, review mode, keyboard, resolve) — unmerged pending
+a real-audio verification pass, because production consumes master.
+
 **Read [ARCHITECTURE.md](ARCHITECTURE.md) before changing anything non-trivial.**
 [README.md](README.md) is the what-and-why; ARCHITECTURE.md is the how, including
 the measurements behind decisions that look arbitrary. There is no site in this
