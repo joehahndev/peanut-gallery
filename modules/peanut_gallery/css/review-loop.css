@@ -1,0 +1,65 @@
+/**
+ * @file
+ * Structural styles for the review loop. Colours come from the theme's
+ * tokens (tokens.css) with plain fallbacks, matching the module's other
+ * stylesheets: the module supplies behaviourally-required structure, the
+ * theme owns the look.
+ */
+
+/* The comment the playhead most recently passed. */
+.pg-comment--current {
+  border-inline-start: 3px solid var(--pg-waveform-marker-color, #c0392b);
+  padding-inline-start: 0.5rem;
+}
+
+/* Resolved feedback recedes but stays legible. */
+.pg-comment--resolved {
+  opacity: 0.55;
+}
+
+.pg-comments--hide-resolved .pg-comment--resolved {
+  display: none;
+}
+
+.pg-resolve-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-block: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.pg-review-toggle.is-active {
+  outline: 2px solid var(--pg-waveform-marker-color, #c0392b);
+}
+
+.pg-shortcuts-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+.pg-shortcuts-overlay dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1.25rem;
+  padding: 1.5rem 2rem;
+  border-radius: 0.5rem;
+  background: var(--pg-surface, #fff);
+  color: var(--pg-text, #111);
+  max-width: 28rem;
+}
+
+.pg-shortcuts-overlay dt {
+  font-family: monospace;
+  font-weight: 700;
+  text-align: end;
+}
+
+.pg-shortcuts-overlay dd {
+  margin: 0;
+}

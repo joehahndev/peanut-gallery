@@ -11,6 +11,7 @@ use Drupal\Component\Utility\Bytes;
 use Drupal\Core\Hook\Attribute\LegacyRequirementsHook;
 use Drupal\Core\StringTranslation\ByteSizeMarkup;
 use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\node\NodeAccessRebuild;
 
 /**
@@ -288,6 +289,32 @@ function peanut_gallery_update_10005(): void {
   if (!$schema->tableExists('peanut_gallery_invite')) {
     $tables = peanut_gallery_schema();
     $schema->createTable('peanut_gallery_invite', $tables['peanut_gallery_invite']);
+  }
+}
+
+/**
+ * Adds the resolved field to recording comments on existing sites.
+ */
+function peanut_gallery_update_10006(): void {
+  if (!FieldStorageConfig::loadByName('comment', 'field_resolved')) {
+    FieldStorageConfig::create([
+      'field_name' => 'field_resolved',
+      'entity_type' => 'comment',
+      'type' => 'boolean',
+    ])->save();
+  }
+  if (!FieldConfig::loadByName('comment', 'recording_comment', 'field_resolved')) {
+    FieldConfig::create([
+      'field_name' => 'field_resolved',
+      'entity_type' => 'comment',
+      'bundle' => 'recording_comment',
+      'label' => 'Resolved',
+      'default_value' => [['value' => 0]],
+      'settings' => [
+        'on_label' => 'Resolved',
+        'off_label' => 'Open',
+      ],
+    ])->save();
   }
 }
 

@@ -11,3 +11,6 @@ peanut_gallery.settings:
       sequence:
         type: email
         label: 'Email address'
+    comment_preroll_seconds:
+      type: integer
+      label: 'Seconds of context played before a comment moment when jumping to it'

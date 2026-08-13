@@ -41,6 +41,20 @@
     {% endif %}
     <span class="pg-comment__author">{{ author }}</span>
     <span class="pg-comment__date">{{ created }}</span>
+    {% if pg_moment_url %}
+      {# A real link that works without JS (opens the page seeked to this
+         moment); review-loop.js upgrades a click into copy-to-clipboard. #}
+      <a class="pg-comment-link" href="{{ pg_moment_url }}"
+        title="{{ 'Link to this moment'|t }}">{{ 'Link'|t }}</a>
+    {% endif %}
+    {% if pg_resolve_url %}
+      {# Only rendered for the recording owner and the comment's author —
+         peanut_gallery_preprocess_comment() decides. Server-side access on
+         the route decides again; this is presentation, not protection. #}
+      <button type="button" class="pg-comment-resolve" data-pg-resolve="{{ pg_resolve_url }}">
+        {{- pg_resolved ? 'Reopen'|t : 'Resolve'|t -}}
+      </button>
+    {% endif %}
     {% if permalink %}
       <span class="pg-comment__permalink">{{ permalink }}</span>
     {% endif %}

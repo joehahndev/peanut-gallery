@@ -1,0 +1,21 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - comment.type.recording_comment
+    - field.storage.comment.field_resolved
+id: comment.recording_comment.field_resolved
+field_name: field_resolved
+entity_type: comment
+bundle: recording_comment
+label: 'Resolved'
+description: 'Marked done by the recording owner or the comment author. Deliberately absent from the comment form: it is toggled from the comment list, where the feedback is being worked through.'
+required: false
+translatable: false
+default_value:
+  - value: 0
+default_value_callback: ''
+settings:
+  on_label: 'Resolved'
+  off_label: 'Open'
+field_type: boolean

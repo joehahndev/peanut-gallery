@@ -41,7 +41,8 @@ ddev exec 'vendor/bin/phpstan analyse --configuration=/mnt/c/dev/peanut-gallery/
 ddev exec 'cd web && ../vendor/bin/phpunit -c core/phpunit.xml modules/custom/peanut_gallery/tests'
 ```
 
-Baseline: **44 tests / 513 assertions**, 2 deprecations. `core/phpunit.xml` (not
+Baseline: **50 tests / 602 assertions**, 2 deprecations (both from contrib
+requirements hooks, not this module). `core/phpunit.xml` (not
 `phpunit.xml.dist`) — only the former has `SIMPLETEST_DB` set.
 
 **Production** — `peanutgallery.joehahn.dev`, DreamHost shared hosting. SSH alias

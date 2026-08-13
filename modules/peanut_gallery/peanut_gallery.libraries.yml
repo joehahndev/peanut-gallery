@@ -50,3 +50,15 @@ push_subscribe:
     - core/drupal
     - core/drupalSettings
     - core/once
+
+review_loop:
+  js:
+    js/review-loop.js: {}
+  css:
+    component:
+      css/review-loop.css: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/once
+    - peanut_gallery/waveform_player

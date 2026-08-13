@@ -20,6 +20,11 @@
  * form below still work normally either way.
  */
 #}
+{# pg-recording is the scope the module's JS anchors to:
+   waveform-player.js resolves comments relative to it, and review-loop.js
+   (keyboard, review mode, karaoke sync) initialises once per element
+   carrying it. Full view only — teasers have a player but no comment list
+   to review. #}
 {%
   set classes = [
     'node',
@@ -28,6 +33,7 @@
     node.isSticky() ? 'node--sticky',
     not node.isPublished() ? 'node--unpublished',
     view_mode ? 'node--view-mode-' ~ view_mode|clean_class,
+    view_mode == 'full' ? 'pg-recording',
   ]
 %}
 <article{{ attributes.addClass(classes) }}>
