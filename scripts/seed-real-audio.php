@@ -103,7 +103,8 @@ $existing_comments = \Drupal::entityQuery('comment')->accessCheck(FALSE)
   ->count()->execute();
 
 if (!$existing_comments) {
-  foreach ($comments as [$timestamp, $body, $resolved]) {
+  foreach ($comments as $comment) {
+    [$timestamp, $body] = $comment;
     $values = [
       'entity_type' => 'node',
       'entity_id' => $node->id(),
@@ -115,7 +116,7 @@ if (!$existing_comments) {
       'status' => 1,
     ];
     if ($has_resolved) {
-      $values['field_resolved'] = !empty($resolved);
+      $values['field_resolved'] = !empty($comment[2]);
     }
     Comment::create($values)->save();
   }
