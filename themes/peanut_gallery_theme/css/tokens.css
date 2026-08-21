@@ -29,10 +29,18 @@
      region's clipping element with this as a plain background
      (attachProgressVeil in waveform-player.js), which composites the one
      obvious way: the waveform's colour shows through at exactly 1 - alpha.
-     At 0.5, played audio is the same hue at half brightness. Applies to
-     both the overview and the zoomed detail view, so the two read as one
-     instrument. */
-  --pg-waveform-progress-color: rgba(0, 0, 0, 0.5);
+     Applies to both the overview and the zoomed detail view, so the two
+     read as one instrument.
+
+     WHITE here, black in the dark-mode block below, and the inversion is
+     the point. "Played" has to *recede*, which means moving toward the page
+     background — and the two themes sit at opposite ends of the scale (251
+     here, 19 there). A single darkening value cannot serve both: on this
+     light ground it drags played audio away from the background and makes
+     it the most prominent thing on the page. Fading toward white puts it at
+     level ~187 against a background of 251, where the same alpha in dark
+     mode puts it at ~60 against 19 — both halfway to their own ground. */
+  --pg-waveform-progress-color: rgba(255, 255, 255, 0.5);
   --pg-waveform-cursor-color: var(--pg-color-text);
   --pg-waveform-marker-color: #2e6fd6;
   --pg-waveform-marker-active-color: var(--pg-color-accent);
@@ -71,9 +79,9 @@
     --pg-color-focus: #6ba1ff;
 
     --pg-waveform-wave-color: #3b3733;
-    /* Same veil as the light theme — see the reasoning there. Half
-       brightness keeps the hue clearly legible against this theme's
-       near-black ground while the region still plainly recedes. */
+    /* Black, where the light theme uses white — see the reasoning there.
+       Same alpha, opposite direction, so played audio fades halfway to
+       this theme's own near-black ground instead of away from it. */
     --pg-waveform-progress-color: rgba(0, 0, 0, 0.5);
     --pg-waveform-cursor-color: var(--pg-color-text);
     --pg-waveform-marker-color: #6ba1ff;
