@@ -64,6 +64,10 @@ composer's platform check:
 ```bash
 ssh peanut-gallery-prod
 cd ~/peanutgallery.joehahn.dev && /usr/local/php84/bin/php vendor/drush/drush/drush.php cr
+
+# drush updb forks a subprocess that picks up the default php, so the 8.4
+# binary has to be on PATH too, not just called directly:
+PATH=/usr/local/php84/bin:$PATH /usr/local/php84/bin/php vendor/drush/drush/drush.php updb -y
 ```
 
 ## Verifying UI changes

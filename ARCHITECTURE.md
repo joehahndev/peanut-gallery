@@ -51,6 +51,15 @@ CLI `php` is 8.2/8.3 and **fails composer's platform check**, so drush must be r
 as `/usr/local/php84/bin/php vendor/drush/drush/drush.php`. The `drush` wrapper
 script is not on `PATH`.
 
+Commands that fork a drush subprocess — `updb` is the one you will hit — need the
+8.4 binary **on `PATH` as well**, because the child is launched as plain `php`
+and dies on the same platform check even though the parent started correctly.
+`cr` never shows this, because it does not fork:
+
+```bash
+PATH=/usr/local/php84/bin:$PATH /usr/local/php84/bin/php vendor/drush/drush/drush.php updb -y
+```
+
 ### Deploying
 
 ```bash
