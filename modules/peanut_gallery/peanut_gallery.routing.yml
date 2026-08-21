@@ -109,3 +109,19 @@ peanut_gallery.peaks:
     parameters:
       node:
         type: entity:node
+
+peanut_gallery.comment_resolve:
+  path: '/peanut-gallery/comment/{comment}/resolve'
+  defaults:
+    _controller: '\Drupal\peanut_gallery\Controller\CommentResolveController::toggle'
+  methods: [POST]
+  requirements:
+    _custom_access: '\Drupal\peanut_gallery\Controller\CommentResolveController::access'
+    # Same-origin proof, same posture as the push routes: without it any
+    # site could resolve comments on behalf of a logged-in visitor.
+    _csrf_request_header_token: 'TRUE'
+    comment: \d+
+  options:
+    parameters:
+      comment:
+        type: entity:comment

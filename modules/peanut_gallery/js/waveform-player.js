@@ -17,7 +17,7 @@
  * normally — slower first paint, but nothing breaks.
  */
 
-((Drupal, once) => {
+((Drupal, drupalSettings, once) => {
   /**
    * Every player instantiated on this page.
    *
@@ -98,7 +98,7 @@
       return;
     }
 
-    layer.regions.addRegion({
+    const region = layer.regions.addRegion({
       id: `pg-marker-${el.dataset.commentId}`,
       start: timestamp,
       end: timestamp,
@@ -106,6 +106,39 @@
       resize: false,
       color: layer.color,
     });
+    titleMarker(region, el);
+  }
+
+  /**
+   * Gives a marker a hover tooltip naming its comment.
+   *
+   * Best-effort on purpose: the marker element is wavesurfer-internal, so
+   * if a future vendored build stops exposing it the marker still works,
+   * it just loses its tooltip.
+   *
+   * @param {object} region
+   *   The regions-plugin region just created.
+   * @param {HTMLElement} el
+   *   The comment element the marker belongs to.
+   */
+  function titleMarker(region, el) {
+    if (!region || !region.element) {
+      return;
+    }
+    const author = el.querySelector('.pg-comment__author')?.textContent?.trim() || '';
+    const body = el.querySelector('.pg-comment__body')?.textContent?.trim().replace(/\s+/g, ' ') || '';
+    const snippet = body.length > 80 ? `${body.slice(0, 80)}…` : body;
+    region.element.title = author && snippet ? `${author}: ${snippet}` : author || snippet;
+  }
+
+  /**
+   * Seconds of context to play before a comment's moment when jumping.
+   *
+   * @return {number}
+   */
+  function prerollSeconds() {
+    const value = drupalSettings.peanutGallery?.prerollSeconds;
+    return typeof value === 'number' && value >= 0 ? value : 3;
   }
 
   /**
@@ -211,9 +244,30 @@
     Drupal.peanutGallery = Drupal.peanutGallery || {};
     Drupal.peanutGallery.getPlayheadSeconds = () => player.getCurrentTime();
 
+    // The rest of the public surface, consumed by review-loop.js (keyboard
+    // shortcuts, review mode) so it never has to reach into wavesurfer.
+    Drupal.peanutGallery.getDurationSeconds = () => player.getDuration();
+    Drupal.peanutGallery.playPause = () => player.playPause();
+    Drupal.peanutGallery.seekTo = (seconds, play = false) => {
+      const duration = player.getDuration() || 0;
+      player.setTime(Math.min(Math.max(seconds, 0), Math.max(duration - 0.1, 0)));
+      if (play && !player.isPlaying()) {
+        player.play();
+      }
+    };
+    Drupal.peanutGallery.seekBy = (delta) => {
+      Drupal.peanutGallery.seekTo(player.getCurrentTime() + delta);
+    };
+    // The canonical "jump to a comment's moment": land pre-roll seconds
+    // early, already playing, so the listener hears the context leading
+    // into the moment instead of starting dead on it.
+    Drupal.peanutGallery.jumpToMoment = (seconds) => {
+      Drupal.peanutGallery.seekTo(Math.max(0, seconds - prerollSeconds()), true);
+    };
+
     player.on('ready', () => {
       findCommentEls(container).forEach(({ el, id, timestamp }) => {
-        regions.addRegion({
+        const region = regions.addRegion({
           id: `pg-marker-${id}`,
           start: timestamp,
           end: timestamp,
@@ -221,11 +275,14 @@
           resize: false,
           color: markerColor,
         });
+        titleMarker(region, el);
       });
 
       if (timeEl) {
         updateTransportTime(timeEl, player.getCurrentTime(), player.getDuration());
       }
+
+      applyDeepLink(player);
     });
 
     if (timeEl) {
@@ -239,7 +296,9 @@
 
     regions.on('region-clicked', (region, e) => {
       e.stopPropagation();
-      player.setTime(region.start);
+      // Same pre-roll treatment as clicking the comment itself: a marker
+      // is just the comment's handle on the waveform.
+      Drupal.peanutGallery.jumpToMoment(region.start);
       highlightComment(region.id.replace('pg-marker-', ''), markerActiveColor);
     });
 
@@ -265,15 +324,45 @@
     });
 
     // Clicking a comment's timestamp jumps there and plays, which is the
-    // point of pinning comments to moments in the first place.
+    // point of pinning comments to moments in the first place. The jump
+    // lands pre-roll seconds early so the moment arrives in context.
     document.addEventListener('pg:seek-request', (event) => {
       const seconds = event.detail.seconds;
       if (typeof seconds !== 'number' || Number.isNaN(seconds)) {
         return;
       }
-      player.setTime(seconds);
-      player.play();
+      Drupal.peanutGallery.jumpToMoment(seconds);
     });
+  }
+
+  /**
+   * Seeks to the moment named by the URL, if any.
+   *
+   * Two forms: ?t=93.4 (a copied moment link) and #comment-N (a comment
+   * permalink, e.g. from a notification email — those also carry ?t=, but
+   * the fragment alone is enough). Seeks paused: browsers block autoplay
+   * with sound before a user gesture, and silently swallowing play() would
+   * leave the transport claiming a state the audio isn't in.
+   *
+   * @param {object} player
+   *   The wavesurfer instance.
+   */
+  function applyDeepLink(player) {
+    const params = new URLSearchParams(window.location.search);
+    let seconds = parseFloat(params.get('t'));
+
+    if (Number.isNaN(seconds)) {
+      const match = window.location.hash.match(/^#comment-(\d+)$/);
+      if (match) {
+        const el = document.querySelector(`[data-comment-id="${match[1]}"][data-timestamp]`);
+        seconds = el ? parseFloat(el.dataset.timestamp) : NaN;
+      }
+    }
+
+    if (Number.isNaN(seconds)) {
+      return;
+    }
+    player.setTime(Math.max(0, seconds - prerollSeconds()));
   }
 
   /**
@@ -690,4 +779,4 @@
       ? `${hours}:${String(minutes).padStart(2, '0')}:${remaining}`
       : `${minutes}:${remaining}`;
   }
-})(Drupal, once);
+})(Drupal, drupalSettings, once);

@@ -73,6 +73,23 @@ final class SettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('default_allow_anonymous_comments'),
     ];
 
+    $form['default_allow_downloads'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Offer a download link by default on new recordings'),
+      '#description' => $this->t('Applies only when a new recording is created; each recording can still be changed individually on its edit form. A download link does not widen who may reach the audio — a listener can already save the stream their browser is playing — it only offers the original file explicitly.'),
+      '#default_value' => $config->get('default_allow_downloads'),
+    ];
+
+    $form['comment_preroll_seconds'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Comment pre-roll (seconds)'),
+      '#description' => $this->t('Jumping to a comment starts playback this many seconds before its moment, so the listener hears the context leading into it. 0 lands exactly on the moment.'),
+      '#min' => 0,
+      '#max' => 10,
+      '#step' => 1,
+      '#default_value' => $config->get('comment_preroll_seconds') ?? 3,
+    ];
+
     $form['notification_emails'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Notify these addresses about comments'),
@@ -148,6 +165,8 @@ final class SettingsForm extends ConfigFormBase {
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $this->config('peanut_gallery.settings')
       ->set('default_allow_anonymous_comments', (bool) $form_state->getValue('default_allow_anonymous_comments'))
+      ->set('default_allow_downloads', (bool) $form_state->getValue('default_allow_downloads'))
+      ->set('comment_preroll_seconds', (int) $form_state->getValue('comment_preroll_seconds'))
       ->set('notification_emails', self::splitAddresses($form_state->getValue('notification_emails')))
       ->save();
 

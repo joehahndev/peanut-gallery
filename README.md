@@ -81,6 +81,11 @@ is overkill. It is all in service of the long-recording case.
   hosting: 975 KB/s → 4.3 MB/s, which is the difference between a five-second
   seek and an instant one.
 - **Per-recording anonymous comments** toggle.
+- **Per-recording download link.** Off by default; when on, listeners get a
+  link to the original file next to the player. It is an offer rather than a
+  permission — the link points at the audio the player already streams, so it
+  never widens who can reach a private recording. The module settings page
+  carries the default for newly created recordings.
 - **Per-recording comment isolation**: when enabled, each commenter sees only
   their own comments. This is filtered in the render path *and* carries a
   per-user cache context, because Drupal's default comment formatter renders

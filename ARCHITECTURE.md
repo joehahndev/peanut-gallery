@@ -41,7 +41,8 @@ ddev exec 'vendor/bin/phpstan analyse --configuration=/mnt/c/dev/peanut-gallery/
 ddev exec 'cd web && ../vendor/bin/phpunit -c core/phpunit.xml modules/custom/peanut_gallery/tests'
 ```
 
-Baseline: **44 tests / 513 assertions**, 2 deprecations. `core/phpunit.xml` (not
+Baseline: **54 tests / 621 assertions**, 2 deprecations (both from contrib
+requirements hooks, not this module). `core/phpunit.xml` (not
 `phpunit.xml.dist`) — only the former has `SIMPLETEST_DB` set.
 
 **Production** — `peanutgallery.joehahn.dev`, DreamHost shared hosting. SSH alias
@@ -93,12 +94,31 @@ everyone in that realm. This module's grants are view-only (`grant_view => 1`,
 update/delete `0`); there are regression tests pinning that. This was a real
 privilege-escalation bug once.
 
-Denied requests return **404, not 403**, so a private recording's existence can't
-be inferred. `hook_file_download()` and both peaks endpoints share that posture.
+**The peaks endpoints deny with 404, not 403**, so a private recording's existence
+can't be inferred from them — `PeaksController` throws `NotFoundHttpException` for
+both "no such recording" and "not allowed". The node page and the private file
+route are ordinary Drupal denials and return **403**: `hook_file_download()`
+returns `-1`, which core renders as forbidden. Tests pin all three, so don't
+"fix" one to match the others without deciding which posture you actually want
+site-wide.
 
 Per-recording fields drive it all: `field_visibility` (public/private),
 `field_shared_with` (user list), `field_allow_anonymous_comments`,
-`field_comments_visible_to_shared` (comment isolation).
+`field_comments_visible_to_shared` (comment isolation), `field_allow_download`
+(offer the original file).
+
+**`field_allow_download` is presentation, not access.** The link it controls
+points at the same URL the player already streams from, gated by the same
+`hook_file_download()`; anyone who can listen can already save what they are
+hearing. The toggle decides whether the site *offers* the file, not who may
+reach it. Do not reach for it as a security control — a test pins that a
+downloadable private recording still refuses strangers.
+
+Two of the site-wide settings in `peanut_gallery.settings` are *defaults for
+new recordings only* — `default_allow_anonymous_comments` and
+`default_allow_downloads`. They seed the widget on the node form when the node
+is new and are never consulted again, so changing a default cannot silently
+re-open (or close) recordings that already exist.
 
 **Comment isolation is enforced twice on purpose.** Drupal's default comment
 formatter renders through `viewMultiple()` and *ignores entity access*, so

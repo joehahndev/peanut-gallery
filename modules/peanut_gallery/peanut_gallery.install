@@ -8,9 +8,12 @@
 declare(strict_types=1);
 
 use Drupal\Component\Utility\Bytes;
+use Drupal\Core\Entity\Entity\EntityFormDisplay;
+use Drupal\Core\Entity\Entity\EntityViewDisplay;
 use Drupal\Core\Hook\Attribute\LegacyRequirementsHook;
 use Drupal\Core\StringTranslation\ByteSizeMarkup;
 use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\node\NodeAccessRebuild;
 
 /**
@@ -288,6 +291,80 @@ function peanut_gallery_update_10005(): void {
   if (!$schema->tableExists('peanut_gallery_invite')) {
     $tables = peanut_gallery_schema();
     $schema->createTable('peanut_gallery_invite', $tables['peanut_gallery_invite']);
+  }
+}
+
+/**
+ * Adds the resolved field to recording comments on existing sites.
+ */
+function peanut_gallery_update_10006(): void {
+  if (!FieldStorageConfig::loadByName('comment', 'field_resolved')) {
+    FieldStorageConfig::create([
+      'field_name' => 'field_resolved',
+      'entity_type' => 'comment',
+      'type' => 'boolean',
+    ])->save();
+  }
+  if (!FieldConfig::loadByName('comment', 'recording_comment', 'field_resolved')) {
+    FieldConfig::create([
+      'field_name' => 'field_resolved',
+      'entity_type' => 'comment',
+      'bundle' => 'recording_comment',
+      'label' => 'Resolved',
+      'default_value' => [['value' => 0]],
+      'settings' => [
+        'on_label' => 'Resolved',
+        'off_label' => 'Open',
+      ],
+    ])->save();
+  }
+}
+
+/**
+ * Adds the download toggle to recordings on existing sites.
+ *
+ * Defaults to off for everything that already exists. A site that has been
+ * sharing private recordings did not consent to offering the files for
+ * download by installing an update, so the new capability starts silent
+ * and is opted into per recording.
+ */
+function peanut_gallery_update_10007(): void {
+  if (!FieldStorageConfig::loadByName('node', 'field_allow_download')) {
+    FieldStorageConfig::create([
+      'field_name' => 'field_allow_download',
+      'entity_type' => 'node',
+      'type' => 'boolean',
+    ])->save();
+  }
+  if (!FieldConfig::loadByName('node', 'recording', 'field_allow_download')) {
+    FieldConfig::create([
+      'field_name' => 'field_allow_download',
+      'entity_type' => 'node',
+      'bundle' => 'recording',
+      'label' => 'Offer a download link',
+      'description' => 'When enabled, anyone who can listen to this recording also gets a link to download the original audio file. It does not change who may reach the file — a listener can already save the audio their browser is streaming — it only offers it explicitly.',
+      'default_value' => [['value' => 0]],
+      'settings' => [
+        'on_label' => 'Offered',
+        'off_label' => 'Not offered',
+      ],
+    ])->save();
+  }
+
+  // Put the widget on the edit form and keep the raw field off the page —
+  // the module renders the link itself, next to the player.
+  $form_display = EntityFormDisplay::load('node.recording.default');
+  if ($form_display && !$form_display->getComponent('field_allow_download')) {
+    $form_display->setComponent('field_allow_download', [
+      'type' => 'boolean_checkbox',
+      'weight' => 14.7,
+      'region' => 'content',
+      'settings' => ['display_label' => TRUE],
+    ])->save();
+  }
+  $view_display = EntityViewDisplay::load('node.recording.default');
+  if ($view_display) {
+    $view_display->removeComponent('field_allow_download')->save();
   }
 }
 

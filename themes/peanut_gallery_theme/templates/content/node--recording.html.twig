@@ -20,6 +20,11 @@
  * form below still work normally either way.
  */
 #}
+{# pg-recording is the scope the module's JS anchors to:
+   waveform-player.js resolves comments relative to it, and review-loop.js
+   (keyboard, review mode, karaoke sync) initialises once per element
+   carrying it. Full view only — teasers have a player but no comment list
+   to review. #}
 {%
   set classes = [
     'node',
@@ -28,6 +33,7 @@
     node.isSticky() ? 'node--sticky',
     not node.isPublished() ? 'node--unpublished',
     view_mode ? 'node--view-mode-' ~ view_mode|clean_class,
+    view_mode == 'full' ? 'pg-recording',
   ]
 %}
 <article{{ attributes.addClass(classes) }}>
@@ -109,6 +115,17 @@
           <span>{{ pg_waveform.file_size }}</span>
           {% if pg_waveform.file_extension %}<span>{{ pg_waveform.file_extension }}</span>{% endif %}
           <span>{{ 'Uploaded @date'|t({'@date': pg_waveform.uploaded}) }}</span>
+          {# Only present when this recording offers a download; the URL is
+             the same one the player streams from, so access is already
+             enforced by hook_file_download(). The `download` attribute is
+             what makes the browser save rather than navigate to it. #}
+          {% if pg_waveform.download_url %}
+            <a
+              class="pg-waveform-download"
+              href="{{ pg_waveform.download_url }}"
+              download="{{ pg_waveform.download_name }}"
+            >{{ 'Download original'|t }}</a>
+          {% endif %}
         </span>
       {% endif %}
     </div>

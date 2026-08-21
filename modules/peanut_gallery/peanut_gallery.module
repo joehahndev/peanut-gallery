@@ -21,6 +21,7 @@ use Drupal\Core\Ajax\InvokeCommand;
 use Drupal\Core\Ajax\PrependCommand;
 use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\peanut_gallery\Ajax\CommentPostedCommand;
+use Drupal\peanut_gallery\Controller\CommentResolveController;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
@@ -302,7 +303,7 @@ function _peanut_gallery_queue_push_about_comment(CommentInterface $comment, str
       '@recording' => $recording,
     ]),
     'body' => mb_strimwidth($body, 0, 120, '…'),
-    'url' => $comment->permalink()->setAbsolute()->toString(),
+    'url' => _peanut_gallery_comment_moment_url($comment),
     // One notification slot per recording, so a burst of comments on the
     // same mix replaces itself instead of stacking.
     'tag' => 'peanut-gallery-' . ($host instanceof NodeInterface ? $host->id() : 'unknown'),
@@ -475,9 +476,11 @@ function peanut_gallery_mail(string $key, array &$message, array $params): void 
     $lines[] = '';
   }
 
-  // permalink() already points at the comment's fragment on its host page.
-  $lines[] = t('Read it here: @url', [
-    '@url' => $comment->permalink()->setAbsolute()->toString(),
+  // The link lands on the comment's fragment *and* carries ?t= so the
+  // player opens seeked to the moment — the email is an invitation to
+  // listen again, not just to read.
+  $lines[] = t('Listen from that moment: @url', [
+    '@url' => _peanut_gallery_comment_moment_url($comment),
   ]);
 
   $message['body'] = $lines;
@@ -509,6 +512,16 @@ function peanut_gallery_preprocess_node(array &$variables): void {
   ];
 
   if ($variables['view_mode'] === 'full') {
+    // The download link is an offer, not a permission: the audio URL below
+    // is the same one the player streams from, and it is gated by
+    // hook_file_download() either way. Anyone who can listen can already
+    // save what they are hearing. This toggle decides whether the site
+    // says so out loud.
+    if ($node->hasField('field_allow_download') && (bool) $node->get('field_allow_download')->value) {
+      $variables['pg_waveform']['download_url'] = $file->createFileUrl(FALSE);
+      $variables['pg_waveform']['download_name'] = $file->getFilename();
+    }
+
     $variables['pg_waveform']['file_name'] = $file->getFilename();
     $variables['pg_waveform']['file_size'] = (string) ByteSizeMarkup::create($file->getSize());
     $extension = strtoupper(pathinfo((string) $file->getFilename(), PATHINFO_EXTENSION));
@@ -528,6 +541,15 @@ function peanut_gallery_preprocess_node(array &$variables): void {
 
   $variables['#attached']['library'][] = 'peanut_gallery/waveform_player';
   $variables['#attached']['library'][] = 'peanut_gallery/comment_timestamp';
+  $variables['#attached']['library'][] = 'peanut_gallery/review_loop';
+  $variables['#attached']['drupalSettings']['peanutGallery']['prerollSeconds'] =
+    (int) (\Drupal::config('peanut_gallery.settings')->get('comment_preroll_seconds') ?? 3);
+  // Same session token the push routes use; consumed by the resolve
+  // toggle's X-CSRF-Token header. Rendering here is safe: this render is
+  // already per-user cached (comment isolation forced the 'user' cache
+  // context on recording pages long ago).
+  $variables['#attached']['drupalSettings']['peanutGallery']['csrfToken'] =
+    \Drupal::csrfToken()->get('rest');
 }
 
 /**
@@ -618,12 +640,58 @@ function peanut_gallery_node_view_alter(array &$build, EntityInterface $entity, 
 function peanut_gallery_preprocess_comment(array &$variables): void {
   /** @var \Drupal\comment\CommentInterface $comment */
   $comment = $variables['comment'];
-  if ($comment->bundle() !== 'recording_comment' || !$comment->hasField('field_timestamp') || $comment->get('field_timestamp')->isEmpty()) {
+  if ($comment->bundle() !== 'recording_comment') {
     return;
   }
-  $seconds = (float) $comment->get('field_timestamp')->value;
-  $variables['pg_timestamp'] = $seconds;
-  $variables['pg_timestamp_formatted'] = _peanut_gallery_format_timestamp($seconds);
+
+  if ($comment->hasField('field_timestamp') && !$comment->get('field_timestamp')->isEmpty()) {
+    $seconds = (float) $comment->get('field_timestamp')->value;
+    $variables['pg_timestamp'] = $seconds;
+    $variables['pg_timestamp_formatted'] = _peanut_gallery_format_timestamp($seconds);
+    // The comment's shareable address: the host page seeked to the moment
+    // (?t=) with the comment fragment. Relative on purpose — the template
+    // renders it as an ordinary link, and JS upgrades it to copy-to-clipboard.
+    $variables['pg_moment_url'] = _peanut_gallery_comment_moment_url($comment, FALSE);
+  }
+
+  // Resolution state and the toggle, for the template. The render varies
+  // by who is looking (only owners/authors get the button), which is safe
+  // because comment rendering here is already per-user cached — comment
+  // isolation forced that long before resolve existed.
+  $resolved = $comment->hasField('field_resolved') && (bool) $comment->get('field_resolved')->value;
+  $variables['pg_resolved'] = $resolved;
+  if ($resolved) {
+    $variables['attributes']['class'][] = 'pg-comment--resolved';
+  }
+  if (CommentResolveController::userMayResolve($comment, \Drupal::currentUser())) {
+    $variables['pg_resolve_url'] = Url::fromRoute('peanut_gallery.comment_resolve', ['comment' => $comment->id()])->toString();
+  }
+}
+
+/**
+ * Builds the URL that opens a comment's page seeked to its moment.
+ *
+ * Permalink() already targets the comment's fragment on its host page;
+ * this adds ?t=<seconds> so waveform-player.js seeks the player there on
+ * load. Comments without a timestamp simply link to the fragment.
+ *
+ * @param \Drupal\comment\CommentInterface $comment
+ *   The comment to link to.
+ * @param bool $absolute
+ *   Whether to build an absolute URL (emails, push) or a relative one
+ *   (in-page copy links).
+ *
+ * @return string
+ *   The URL string.
+ */
+function _peanut_gallery_comment_moment_url(CommentInterface $comment, bool $absolute = TRUE): string {
+  $url = $comment->permalink()->setAbsolute($absolute);
+  if ($comment->hasField('field_timestamp') && !$comment->get('field_timestamp')->isEmpty()) {
+    $options = $url->getOptions();
+    $options['query']['t'] = (float) $comment->get('field_timestamp')->value;
+    $url->setOptions($options);
+  }
+  return $url->toString();
 }
 
 /**
@@ -664,7 +732,12 @@ function peanut_gallery_form_alter(array &$form, FormStateInterface $form_state,
 }
 
 /**
- * Seeds the anonymous-comments default for newly created recordings.
+ * Seeds the site-wide defaults for newly created recordings.
+ *
+ * Only for new nodes: these settings answer "what should a recording start
+ * as", not "what must every recording be". Editing an existing recording
+ * must never have its choice silently rewritten by a later change to the
+ * site default.
  */
 function _peanut_gallery_alter_recording_node_form(array &$form, FormStateInterface $form_state): void {
   $form_object = $form_state->getFormObject();
@@ -672,11 +745,21 @@ function _peanut_gallery_alter_recording_node_form(array &$form, FormStateInterf
     return;
   }
   $node = $form_object->getEntity();
-  if (!$node instanceof NodeInterface || !$node->isNew() || !isset($form['field_allow_anonymous_comments']['widget']['value'])) {
+  if (!$node instanceof NodeInterface || !$node->isNew()) {
     return;
   }
-  $default = \Drupal::config('peanut_gallery.settings')->get('default_allow_anonymous_comments');
-  $form['field_allow_anonymous_comments']['widget']['value']['#default_value'] = (bool) $default;
+
+  $config = \Drupal::config('peanut_gallery.settings');
+  $defaults = [
+    'field_allow_anonymous_comments' => 'default_allow_anonymous_comments',
+    'field_allow_download' => 'default_allow_downloads',
+  ];
+
+  foreach ($defaults as $field => $setting) {
+    if (isset($form[$field]['widget']['value'])) {
+      $form[$field]['widget']['value']['#default_value'] = (bool) $config->get($setting);
+    }
+  }
 }
 
 /**
