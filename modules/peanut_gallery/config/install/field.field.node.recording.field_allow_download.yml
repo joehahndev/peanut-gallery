@@ -1,0 +1,21 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_allow_download
+    - node.type.recording
+id: node.recording.field_allow_download
+field_name: field_allow_download
+entity_type: node
+bundle: recording
+label: 'Offer a download link'
+description: 'When enabled, anyone who can listen to this recording also gets a link to download the original audio file. It does not change who may reach the file — a listener can already save the audio their browser is streaming — it only offers it explicitly.'
+required: false
+translatable: false
+default_value:
+  - value: 0
+default_value_callback: ''
+settings:
+  on_label: Offered
+  off_label: 'Not offered'
+field_type: boolean

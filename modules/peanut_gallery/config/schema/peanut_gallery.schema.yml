@@ -14,3 +14,6 @@ peanut_gallery.settings:
     comment_preroll_seconds:
       type: integer
       label: 'Seconds of context played before a comment moment when jumping to it'
+    default_allow_downloads:
+      type: boolean
+      label: 'Offer a download link by default on new recordings'

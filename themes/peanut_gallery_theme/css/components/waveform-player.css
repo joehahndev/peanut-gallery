@@ -161,3 +161,18 @@
   margin-inline: 0.4em;
   opacity: 0.6;
 }
+
+/* Download link, sitting at the end of the file-metadata run. Styled as a
+   link rather than a button: it is an available action, not the thing the
+   page is for — the player is. */
+.pg-waveform-download {
+  color: var(--pg-color-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  white-space: nowrap;
+}
+
+.pg-waveform-download:hover,
+.pg-waveform-download:focus-visible {
+  color: var(--pg-color-text);
+}

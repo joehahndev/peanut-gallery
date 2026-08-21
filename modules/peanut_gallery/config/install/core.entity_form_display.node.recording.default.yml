@@ -3,6 +3,7 @@ status: true
 dependencies:
   config:
     - field.field.node.recording.field_allow_anonymous_comments
+    - field.field.node.recording.field_allow_download
     - field.field.node.recording.field_audio_file
     - field.field.node.recording.field_comment
     - field.field.node.recording.field_comments_visible_to_shared
@@ -67,6 +68,13 @@ content:
   field_comments_visible_to_shared:
     type: boolean_checkbox
     weight: 14.5
+    region: content
+    settings:
+      display_label: true
+    third_party_settings: {  }
+  field_allow_download:
+    type: boolean_checkbox
+    weight: 14.7
     region: content
     settings:
       display_label: true

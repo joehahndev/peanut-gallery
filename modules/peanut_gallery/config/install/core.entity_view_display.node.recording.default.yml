@@ -3,6 +3,7 @@ status: true
 dependencies:
   config:
     - field.field.node.recording.field_allow_anonymous_comments
+    - field.field.node.recording.field_allow_download
     - field.field.node.recording.field_audio_file
     - field.field.node.recording.field_comment
     - field.field.node.recording.field_comments_visible_to_shared
@@ -29,3 +30,4 @@ hidden:
   field_shared_with: true
   field_allow_anonymous_comments: true
   field_comments_visible_to_shared: true
+  field_allow_download: true

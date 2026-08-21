@@ -115,6 +115,17 @@
           <span>{{ pg_waveform.file_size }}</span>
           {% if pg_waveform.file_extension %}<span>{{ pg_waveform.file_extension }}</span>{% endif %}
           <span>{{ 'Uploaded @date'|t({'@date': pg_waveform.uploaded}) }}</span>
+          {# Only present when this recording offers a download; the URL is
+             the same one the player streams from, so access is already
+             enforced by hook_file_download(). The `download` attribute is
+             what makes the browser save rather than navigate to it. #}
+          {% if pg_waveform.download_url %}
+            <a
+              class="pg-waveform-download"
+              href="{{ pg_waveform.download_url }}"
+              download="{{ pg_waveform.download_name }}"
+            >{{ 'Download original'|t }}</a>
+          {% endif %}
         </span>
       {% endif %}
     </div>

@@ -512,6 +512,16 @@ function peanut_gallery_preprocess_node(array &$variables): void {
   ];
 
   if ($variables['view_mode'] === 'full') {
+    // The download link is an offer, not a permission: the audio URL below
+    // is the same one the player streams from, and it is gated by
+    // hook_file_download() either way. Anyone who can listen can already
+    // save what they are hearing. This toggle decides whether the site
+    // says so out loud.
+    if ($node->hasField('field_allow_download') && (bool) $node->get('field_allow_download')->value) {
+      $variables['pg_waveform']['download_url'] = $file->createFileUrl(FALSE);
+      $variables['pg_waveform']['download_name'] = $file->getFilename();
+    }
+
     $variables['pg_waveform']['file_name'] = $file->getFilename();
     $variables['pg_waveform']['file_size'] = (string) ByteSizeMarkup::create($file->getSize());
     $extension = strtoupper(pathinfo((string) $file->getFilename(), PATHINFO_EXTENSION));
@@ -722,7 +732,12 @@ function peanut_gallery_form_alter(array &$form, FormStateInterface $form_state,
 }
 
 /**
- * Seeds the anonymous-comments default for newly created recordings.
+ * Seeds the site-wide defaults for newly created recordings.
+ *
+ * Only for new nodes: these settings answer "what should a recording start
+ * as", not "what must every recording be". Editing an existing recording
+ * must never have its choice silently rewritten by a later change to the
+ * site default.
  */
 function _peanut_gallery_alter_recording_node_form(array &$form, FormStateInterface $form_state): void {
   $form_object = $form_state->getFormObject();
@@ -730,11 +745,21 @@ function _peanut_gallery_alter_recording_node_form(array &$form, FormStateInterf
     return;
   }
   $node = $form_object->getEntity();
-  if (!$node instanceof NodeInterface || !$node->isNew() || !isset($form['field_allow_anonymous_comments']['widget']['value'])) {
+  if (!$node instanceof NodeInterface || !$node->isNew()) {
     return;
   }
-  $default = \Drupal::config('peanut_gallery.settings')->get('default_allow_anonymous_comments');
-  $form['field_allow_anonymous_comments']['widget']['value']['#default_value'] = (bool) $default;
+
+  $config = \Drupal::config('peanut_gallery.settings');
+  $defaults = [
+    'field_allow_anonymous_comments' => 'default_allow_anonymous_comments',
+    'field_allow_download' => 'default_allow_downloads',
+  ];
+
+  foreach ($defaults as $field => $setting) {
+    if (isset($form[$field]['widget']['value'])) {
+      $form[$field]['widget']['value']['#default_value'] = (bool) $config->get($setting);
+    }
+  }
 }
 
 /**

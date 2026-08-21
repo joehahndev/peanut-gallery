@@ -55,7 +55,7 @@ ddev exec 'vendor/bin/phpstan analyse --configuration=/mnt/c/dev/peanut-gallery/
 ddev exec 'cd web && ../vendor/bin/phpunit -c core/phpunit.xml modules/custom/peanut_gallery/tests'
 ```
 
-Baseline **44 tests / 513 assertions**. Run phpcs and phpstan before claiming
+Baseline **54 tests / 621 assertions**. Run phpcs and phpstan before claiming
 Drupal code is done, and report their actual output.
 
 On production, drush needs the 8.4 binary explicitly — the default CLI PHP fails
