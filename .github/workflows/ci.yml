@@ -14,3 +14,7 @@ jobs:
         modules/peanut_gallery:web/modules/custom/peanut_gallery
         themes/peanut_gallery_theme:web/themes/custom/peanut_gallery_theme
       phpstan-level: '6'
+      # OOP hooks and LegacyRequirementsHook need 11.2+; see the info.yml files.
+      drupal-versions: '["^11.4"]'
+      # Runtime dependencies the module calls into.
+      composer-require: 'drush/drush minishlink/web-push'

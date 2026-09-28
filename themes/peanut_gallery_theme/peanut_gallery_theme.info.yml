@@ -2,7 +2,7 @@ name: 'Peanut Gallery'
 type: theme
 description: 'A modern, buildless companion theme for the Peanut Gallery module: light/dark design tokens, no CSS framework, no JS build step.'
 package: 'Peanut Gallery'
-core_version_requirement: ^10.3 || ^11
+core_version_requirement: ^11.2
 'base theme': false
 hidden: false
 libraries:

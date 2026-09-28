@@ -207,7 +207,7 @@ regress if "simplified":
   recording. Unknown, expired and redeemed codes are treated identically so the
   page can't be used to probe. Sign-in afterwards uses
   `OneTimeAuthentication::generateOneTimeLoginUrl()` (`user_pass_reset_url()` is
-  deprecated as of 11.4; there is a fallback because the module supports 10.3+).
+  deprecated as of 11.4; there is a fallback because the module supports 11.2+).
 - `Push/*` + `Plugin/QueueWorker/PushNotificationWorker` + `Controller/PushController`
   — VAPID keys in state, subscriptions in `peanut_gallery_push_subscription`,
   delivery drained by cron. Subscribe/unsubscribe require a CSRF header token.

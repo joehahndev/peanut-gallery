@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/joehahndev/peanut-gallery/actions/workflows/ci.yml/badge.svg)](https://github.com/joehahndev/peanut-gallery/actions/workflows/ci.yml)
 
-Timestamped comments on very long audio recordings, for Drupal 10.3+ / 11.
+Timestamped comments on very long audio recordings, for Drupal 11.2+.
 
 Upload a recording, share it with a handful of specific people, and let them
 leave comments pinned to an exact moment in it. Clicking a comment's
@@ -123,8 +123,9 @@ the comment form's inputs line up.
 
 ## Requirements
 
-- Drupal 10.3+ or 11
+- Drupal 11.2+ (OOP hooks and the `LegacyRequirementsHook` attribute)
 - PHP 8.3+
+- `minishlink/web-push` (Composer) for push notifications
 - **ffmpeg and ffprobe** — optional but strongly recommended; without them
   peaks fall back to client-side decoding, which is impractical for long
   recordings
