@@ -1,0 +1,16 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  drupal:
+    uses: joehahndev/drupal-module-ci/.github/workflows/drupal.yml@v1
+    with:
+      install-map: |
+        modules/peanut_gallery:web/modules/custom/peanut_gallery
+        themes/peanut_gallery_theme:web/themes/custom/peanut_gallery_theme
+      phpstan-level: '6'

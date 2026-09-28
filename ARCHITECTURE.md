@@ -28,16 +28,14 @@ Drupal site (below).
 
 ## Environments
 
-**Local dev** — a DDEV Drupal 11 site at `~/dev/peanut-gallery-demo` (WSL), which
-symlinks `web/modules/custom/peanut_gallery` → this repo. It has its own
-`DEPLOYMENT.md`. PHP 8.3 in-container; `peanut_gallery_demo` there provides seed
-content.
+**Local dev** — a DDEV Drupal 11 site that symlinks `web/modules/custom/peanut_gallery`
+and `web/themes/custom/peanut_gallery_theme` into this repo. A `peanut_gallery_demo`
+module there provides seed content.
 
 ```bash
-# All commands run from ~/dev/peanut-gallery-demo inside WSL.
-ddev exec 'php vendor/drush/drush/drush.php cr'
-ddev exec 'vendor/bin/phpcs  --standard=/mnt/c/dev/peanut-gallery/phpcs.xml.dist  /mnt/c/dev/peanut-gallery/modules/peanut_gallery /mnt/c/dev/peanut-gallery/scripts'
-ddev exec 'vendor/bin/phpstan analyse --configuration=/mnt/c/dev/peanut-gallery/phpstan.neon /mnt/c/dev/peanut-gallery/modules/peanut_gallery'
+# From the site root, inside the DDEV container.
+ddev exec 'vendor/bin/phpcs --standard=/path/to/peanut-gallery/phpcs.xml.dist /path/to/peanut-gallery/modules/peanut_gallery'
+ddev exec 'vendor/bin/phpstan analyse --configuration=/path/to/peanut-gallery/phpstan.neon'
 ddev exec 'cd web && ../vendor/bin/phpunit -c core/phpunit.xml modules/custom/peanut_gallery/tests'
 ```
 
@@ -45,41 +43,25 @@ Baseline: **54 tests / 621 assertions**, 2 deprecations (both from contrib
 requirements hooks, not this module). `core/phpunit.xml` (not
 `phpunit.xml.dist`) — only the former has `SIMPLETEST_DB` set.
 
-**Production** — `peanutgallery.joehahn.dev`, DreamHost shared hosting. SSH alias
-`peanut-gallery-prod` (key auth already configured). Web PHP is 8.4; the default
-CLI `php` is 8.2/8.3 and **fails composer's platform check**, so drush must be run
-as `/usr/local/php84/bin/php vendor/drush/drush/drush.php`. The `drush` wrapper
-script is not on `PATH`.
+**CI** — GitHub Actions runs the same three checks on every push through
+[drupal-module-ci](https://github.com/joehahndev/drupal-module-ci), against a
+freshly built Drupal 10.6 and 11.4 on PHP 8.3 and 8.4.
 
-Commands that fork a drush subprocess — `updb` is the one you will hit — need the
-8.4 binary **on `PATH` as well**, because the child is launched as plain `php`
-and dies on the same platform check even though the parent started correctly.
-`cr` never shows this, because it does not fork:
+**Production** — a shared host running PHP 8.4. Deploy is an rsync of
+`modules/peanut_gallery/` (excluding `.git` and `tests`) followed by `drush cr`.
 
-```bash
-PATH=/usr/local/php84/bin:$PATH /usr/local/php84/bin/php vendor/drush/drush/drush.php updb -y
-```
+Two rsync rules, both learned the hard way:
 
-### Deploying
-
-```bash
-rsync -avz --delete --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r \
-  --exclude='.git' --exclude='tests' \
-  modules/peanut_gallery/ peanut-gallery-prod:~/peanutgallery.joehahn.dev/web/modules/custom/peanut_gallery/
-```
-
-Two rules, both learned the hard way:
-
-- **`--chmod` is mandatory.** The source is a Windows drive mounted in WSL, whose
-  permission bits are meaningless. Without it, directories land as `drwxr-----`,
-  Apache loses traversal, and every asset 404s — while the files themselves are
-  byte-perfect, so it looks like a caching problem. Tell-tale:
-  `X-Drupal-Dynamic-Cache: UNCACHEABLE (404)` on a static asset.
+- **Pass `--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r`** when the source is a Windows drive
+  mounted in WSL, whose permission bits are meaningless. Without it, directories
+  land as `drwxr-----`, Apache loses traversal, and every asset 404s — while the
+  files themselves are byte-perfect, so it looks like a caching problem.
+  Tell-tale: `X-Drupal-Dynamic-Cache: UNCACHEABLE (404)` on a static asset.
 - **One source per rsync call.** Multiple trailing-slash sources into one
   destination merge their *contents* instead of creating subdirectories.
 
-Then `drush cr` on the server. Verify by md5-comparing the served files against
-`git show master:<path>` — that check has caught real mistakes more than once.
+Verify a deploy by md5-comparing the served files against `git show main:<path>`
+— that check has caught real mistakes more than once.
 
 ---
 

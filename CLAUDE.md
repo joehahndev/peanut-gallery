@@ -6,13 +6,9 @@ A Drupal 11 module + custom theme: upload hours-long audio recordings, play them
 in a wavesurfer.js waveform, and let people comment pinned to an exact moment.
 Recordings are public or private with a per-recording shared-with list.
 
-**Consumers:** two sites run this module — the live
-peanutgallery.joehahn.dev (deploys from `master`) and the
-mix-comments-saas SaaS dev site (`~/dev/mix-comments-saas` in WSL, tracks
-the working tree via symlink; see `C:\dev\mix-comments-saas\docs\HANDOFF.md`).
-The **`review-loop` branch** carries the v1.1 review-loop feature set
-(pre-roll, deep links, review mode, keyboard, resolve) — unmerged pending
-a real-audio verification pass, because production consumes master.
+**Branches:** `main` is what production runs. The **`review-loop` branch**
+carries the v1.1 review-loop feature set (pre-roll, deep links, review mode,
+keyboard, resolve), unmerged pending a real-audio verification pass.
 
 **Read [ARCHITECTURE.md](ARCHITECTURE.md) before changing anything non-trivial.**
 [README.md](README.md) is the what-and-why; ARCHITECTURE.md is the how, including
@@ -46,29 +42,18 @@ assume a page reload is cheap for a listener.
 
 ## Commands
 
-Run from `~/dev/peanut-gallery-demo` in WSL (the DDEV site symlinks this repo):
+Run from the root of the DDEV site that symlinks this repo in:
 
 ```bash
 ddev exec 'php vendor/drush/drush/drush.php cr'
-ddev exec 'vendor/bin/phpcs  --standard=/mnt/c/dev/peanut-gallery/phpcs.xml.dist  /mnt/c/dev/peanut-gallery/modules/peanut_gallery /mnt/c/dev/peanut-gallery/scripts'
-ddev exec 'vendor/bin/phpstan analyse --configuration=/mnt/c/dev/peanut-gallery/phpstan.neon /mnt/c/dev/peanut-gallery/modules/peanut_gallery'
+ddev exec 'vendor/bin/phpcs --standard=/path/to/peanut-gallery/phpcs.xml.dist /path/to/peanut-gallery/modules/peanut_gallery /path/to/peanut-gallery/scripts'
+ddev exec 'vendor/bin/phpstan analyse --configuration=/path/to/peanut-gallery/phpstan.neon'
 ddev exec 'cd web && ../vendor/bin/phpunit -c core/phpunit.xml modules/custom/peanut_gallery/tests'
 ```
 
 Baseline **54 tests / 621 assertions**. Run phpcs and phpstan before claiming
-Drupal code is done, and report their actual output.
-
-On production, drush needs the 8.4 binary explicitly — the default CLI PHP fails
-composer's platform check:
-
-```bash
-ssh peanut-gallery-prod
-cd ~/peanutgallery.joehahn.dev && /usr/local/php84/bin/php vendor/drush/drush/drush.php cr
-
-# drush updb forks a subprocess that picks up the default php, so the 8.4
-# binary has to be on PATH too, not just called directly:
-PATH=/usr/local/php84/bin:$PATH /usr/local/php84/bin/php vendor/drush/drush/drush.php updb -y
-```
+Drupal code is done, and report their actual output. CI runs the same three
+checks on every push (see `.github/workflows/ci.yml`).
 
 ## Verifying UI changes
 

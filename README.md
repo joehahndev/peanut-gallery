@@ -1,5 +1,7 @@
 # Peanut Gallery
 
+[![CI](https://github.com/joehahndev/peanut-gallery/actions/workflows/ci.yml/badge.svg)](https://github.com/joehahndev/peanut-gallery/actions/workflows/ci.yml)
+
 Timestamped comments on very long audio recordings, for Drupal 10.3+ / 11.
 
 Upload a recording, share it with a handful of specific people, and let them
