@@ -47,6 +47,8 @@ peanut_gallery.service_worker:
   defaults:
     _controller: '\Drupal\peanut_gallery\Controller\PushController::serviceWorker'
   requirements:
+    # The service worker is static JavaScript with no content in it; the
+    # browser registers it before any session exists.
     _access: 'TRUE'
 
 peanut_gallery.push_subscribe:
